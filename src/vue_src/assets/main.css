@@ -8,7 +8,7 @@ body {
 }
 
 #app {
-  min-width: 300px;
+  min-width: 400px;
   
   margin: 0;
   border: 0;
@@ -38,6 +38,8 @@ body {
   padding:0.5rem;
   margin:0;
   height:fit-content;
+  text-overflow: ellipsis;
+  max-width: 300px;
   color:var(--c1);
   caret-shape: block; caret-color: var(--c1);
 }

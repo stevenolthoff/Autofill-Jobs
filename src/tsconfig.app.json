@@ -4,7 +4,9 @@
   "exclude": ["vue_src/**/__tests__/*"],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-
+   
+    "types": ["chrome"]
+  ,
     "paths": {
       "@/*": ["./vue_src/*"]
     }
