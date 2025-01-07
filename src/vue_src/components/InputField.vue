@@ -1,9 +1,9 @@
 <template>
   <div class="inputFieldDiv">
     <h2>{{ label }}</h2>
-    <input v-if="!['Resume','Gender','Hispanic/Latino','Veteran Status','Disability Status'].includes( label) " type="text" :placeholder="placeHolder" v-model="inputValue" @input="saveData" />
+    <input v-if="!dropDowns.includes( label) " type="text" :placeholder="placeHolder" v-model="inputValue" @input="saveData" />
     <input v-if="label == 'Resume'" type="file" :placeholder="placeHolder" @change="saveResume" />
-    <select v-if="['Gender','Hispanic/Latino','Veteran Status','Disability Status'].includes(label)" v-model="inputValue" @change="saveData">
+    <select v-if="dropDowns.includes(label)" v-model="inputValue" @change="saveData">
       <option v-for="option in placeHolder" :key="option" :value="option">{{ option }}</option>
     </select>
   </div>
@@ -14,10 +14,15 @@ import { ref } from 'vue';
 
 export default {
   props: ['label', 'placeHolder'],
+  data() {
+    return {
+      dropDowns: ['Gender','Hispanic/Latino','Veteran Status','Disability Status','Degree','Start Date Month','End Date Month'],
+    };
+  },
   setup(props) {
     // Declare a reactive input value using Vue's ref
     const inputValue = ref('');
-
+   
     const saveResume = (event: Event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (file) {
