@@ -13,10 +13,9 @@
       {
         "js": ["autofill.js"],
         "matches": [
-          "http://localhost/*",
-          "https://developer.chrome.com/docs/extensions/reference/manifest/content-scripts",
           "https://job-boards.greenhouse.io/*",
-          "https://boards.greenhouse.io/*"
+          "https://boards.greenhouse.io/*",
+          "https://jobs.lever.co/*"
         ],
         "world": "ISOLATED",
         "run_at": "document_end"

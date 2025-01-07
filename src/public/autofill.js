@@ -5,33 +5,55 @@ window.addEventListener("load", (event) => {
   awaitForm();
 });
 
+//Fields per job board map to the stored params array in the extension
 const fields = {
-  greenhouse: [
-    "first_name",
-    "last_name",
-    "email",
-    "phone",
-    "LinkedIn",
-    "Website",
-    "school",
-    "degree",
-    "discipline",
-    "start-month",
-    "start-year",
-    "end-month",
-    "end-year",
-    "gender",
-    "hispanic_ethnicity",
-    "veteran_status",
-    "disability",
-  ],
+  'greenhouse': {
+    'first_name': 0,
+    'last_name': 1,
+    'email': 2,
+    'phone': 3,
+    'LinkedIn': 4,
+    'Website': 5,
+    'school': 6,
+    'degree': 7,
+    'discipline': 8,
+    'start-month': 9,
+    'start-year': 10,
+    'end-month': 11,
+    'end-year': 12,
+    'gender': 13,
+    'race': 14,
+    'hispanic_ethnicity': 15,
+    'veteran_status': 16,
+    'disability': 17,
+  },
+  'lever': {
+    'name-input': 18,
+    'email-input': 2,
+    'phone-input': 3,
+    'urls[LinkedIn]': 4,
+    'urls[Linkedin]': 4,
+    'urls[Portfolio]': 5,
+    'school': 6,
+    'degree': 7,
+    'discipline': 8,
+    'start-month': 9,
+    'start-year': 10,
+    'end-month': 11,
+    'end-year': 12,
+    'gender': 13,
+    'race': 14,
+    'hispanic_ethnicity': 15,
+    'veteran_status': 16,
+    'disability': 17,
+  },
 };
 
 const params = [
   "First Name",
   "Last Name",
   "Email",
-  "Phone",  
+  "Phone",
   "LinkedIn",
   "Website",
   "School",
@@ -41,11 +63,12 @@ const params = [
   "Start Date Year",
   "End Date Month",
   "End Date Year",
-
   "Gender",
+  "Race",
   "Hispanic/Latino",
   "Veteran Status",
   "Disability Status",
+  "Full Name",
 ];
 
 function awaitForm() {
@@ -53,14 +76,14 @@ function awaitForm() {
   const observer = new MutationObserver((_, observer) => {
     for (let jobForm in fields) {
       if (window.location.hostname.includes(jobForm)) {
-        let form = null;
-        if (jobForm === "greenhouse") {
-          form = document.querySelector("#application-form, #application_form");
-        }
+        let form = document.querySelector(
+          "#application-form, #application_form"
+        );
         if (form) {
           observer.disconnect();
           autofill(form);
         }
+        break; //found site
       }
     }
   });
@@ -69,11 +92,17 @@ function awaitForm() {
     childList: true,
     subtree: true,
   });
+
+  if (window.location.hostname.includes("lever")){
+    let form = document.querySelector("#application-form, #application_form");
+    if (form) autofill(form);
+  }
+
 }
 function setNativeValue(el, value) {
   const previousValue = el.value;
 
-  if (el.type === 'checkbox' || el.type === 'radio') {
+  if (el.type === "checkbox" || el.type === "radio") {
     if ((!!value && !el.checked) || (!!!value && el.checked)) {
       el.click();
     }
@@ -85,49 +114,51 @@ function setNativeValue(el, value) {
   }
 
   // 'change' instead of 'input', see https://github.com/facebook/react/issues/11488#issuecomment-381590324
-  el.dispatchEvent(new Event('change', { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
 }
 function autofill(form) {
   chrome.storage.sync.get().then((res) => {
     console.log(res);
     for (let jobForm in fields) {
       if (window.location.hostname.includes(jobForm)) {
-    
-       
         //go through stored params
-        for (let i = 0; i < params.length; i++) {
-          const param = params[i];
-          if (res[param]) {
-            const translatedParam = fields[jobForm][i];
-            let inputElement = form.querySelector(
-              `[name="${translatedParam}"], [id="${translatedParam}"], [placeholder="${translatedParam}"], [aria-label*="${translatedParam}"], [aria-labelledby*="${translatedParam}"], [aria-describedby*="${translatedParam}"]`
-            );
-            if (inputElement) {
-              
-              setNativeValue(inputElement,res[param]);
-              //for the dropdown elements
-              let btn = inputElement.closest(".select__control--outside-label");
-              if (btn){
-                
-                const mouseUpEvent = new MouseEvent("mouseup", { bubbles: true, cancelable: true });
-                btn.dispatchEvent(mouseUpEvent);
-                setTimeout(()=>{
-                  const enterEvent = new KeyboardEvent("keydown", {
-                    key: "Enter",       
-                    code: "Enter",       
-                    keyCode: 13,        
-                    which: 13,          
-                    bubbles: true,
-                  });
-                  btn.dispatchEvent(enterEvent);
+       
+        
+        for (let jobParam in fields[jobForm]) {
+          //gets converted param
+          const param = params[fields[jobForm][jobParam]];
+          if (!res[param]) continue;
 
-                },200);
-                
-            }
-            }
-          }
+          let inputElement = form.querySelector(
+            `[name="${jobParam}"], [id="${jobParam}"], [placeholder="${jobParam}"], [aria-label*="${jobParam}"], [aria-labelledby*="${jobParam}"], [aria-describedby*="${jobParam}"], [data-qa*="${jobParam}]`
+          );
+          if (!inputElement) continue;
+
+          setNativeValue(inputElement, res[param]);
+          //for the dropdown elements
+          let btn = inputElement.closest(".select__control--outside-label");
+          if (!btn) continue;
+         
+          const mouseUpEvent = new MouseEvent("mouseup", {
+            bubbles: true,
+            cancelable: true,
+          });
+          btn.dispatchEvent(mouseUpEvent);
+          window.scrollTo({top:0,behavior:"instant"});
+          setTimeout(() => {
+            const enterEvent = new KeyboardEvent("keydown", {
+              key: "Enter",
+              code: "Enter",
+              keyCode: 13,
+              which: 13,
+              bubbles: true,
+            });
+            btn.dispatchEvent(enterEvent);
+            window.scrollTo({top:0,behavior:"instant"});
+          }, 250);
         }
-        break;
+        window.scrollTo({top:0,behavior:"instant"});
+        break; //found site
       }
     }
   });
