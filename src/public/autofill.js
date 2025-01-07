@@ -8,70 +8,45 @@ window.addEventListener("load", (event) => {
 //Fields per job board map to the stored params array in the extension
 const fields = {
   greenhouse: {
-    first_name: 0,
-    last_name: 1,
-    email: 2,
-    phone: 3,
-    LinkedIn: 4,
-    Website: 5,
-    school: 6,
-    degree: 7,
-    discipline: 8,
-    "start-month": 9,
-    "start-year": 10,
-    "end-month": 11,
-    "end-year": 12,
-    gender: 13,
-    race: 14,
-    hispanic_ethnicity: 15,
-    veteran_status: 16,
-    disability: 17,
-    resume: 19,
+    first_name: "First Name",
+    last_name: "Last Name",
+    email: "Email",
+    phone: "Phone",
+    LinkedIn: "LinkedIn",
+   "candidate-location" : "Location (City)",
+    Website: "Website",
+    school: "School",
+    degree: "Degree",
+    discipline: "Discipline",
+    "start-month": "Start Date Month",
+    "start-year": "Start Date Year",
+    "end-month": "End Date Month",
+    "end-year": "End Date Year",
+    gender: "Gender",
+    hispanic_ethnicity: "Hispanic/Latino",
+    "race": "Race",
+    "react-select-race-placeholder race-error" : "Race",
+    veteran_status: "Veteran Status",
+    disability:  "Disability Status",
+    resume: "Resume",
   },
   lever: {
-    "name-input": 18,
-    "email-input": 2,
-    "phone-input": 3,
-    "urls[LinkedIn]": 4,
-    "urls[Linkedin]": 4,
-    "urls[Portfolio]": 5,
-    school: 6,
-    degree: 7,
-    discipline: 8,
-    "start-month": 9,
-    "start-year": 10,
-    "end-month": 11,
-    "end-year": 12,
-    gender: 13,
-    race: 14,
-    hispanic_ethnicity: 15,
-    veteran_status: 16,
-    disability: 17,
+    "name-input": "Full Name",
+    "email-input": "Email",
+    "phone-input": "Phone",
+    "urls[LinkedIn]": "LinkedIn",
+    "urls[Linkedin]": "LinkedIn",
+    "urls[Portfolio]": "Website",
+   
   },
 };
 
-const params = [
-  "First Name",
-  "Last Name",
-  "Email",
-  "Phone",
-  "LinkedIn",
-  "Website",
-  "School",
-  "Degree",
-  "Discipline",
-  "Start Date Month",
-  "Start Date Year",
-  "End Date Month",
-  "End Date Year",
-  "Gender",
-  "Race",
-  "Hispanic/Latino",
-  "Veteran Status",
-  "Disability Status",
-  "Full Name",
-  "Resume",
-];
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
 function base64ToArrayBuffer(base64) {
   const binaryString = atob(base64);
 
@@ -123,8 +98,9 @@ function setNativeValue(el, value) {
   // 'change' instead of 'input', see https://github.com/facebook/react/issues/11488#issuecomment-381590324
   el.dispatchEvent(new Event("change", { bubbles: true }));
 }
-function autofill(form) {
-  chrome.storage.sync.get().then((res) => {
+async function autofill(form) {
+  chrome.storage.sync.get().then(async (res) => {
+    sleep(200);
     console.log(res);
     for (let jobForm in fields) {
       if (window.location.hostname.includes(jobForm)) {
@@ -132,57 +108,62 @@ function autofill(form) {
 
         for (let jobParam in fields[jobForm]) {
           if (jobParam.toLowerCase() == "resume") {
-            chrome.storage.local.get().then((f) => {
-              setTimeout(() => {
+            chrome.storage.local.get().then((localData) => {
                 let el = document.querySelector(`#resume`);
                 const dt = new DataTransfer();
-                let arrBfr = base64ToArrayBuffer(f.Resume);
+                let arrBfr = base64ToArrayBuffer(localData.Resume);
 
                 dt.items.add(
-                  new File([arrBfr], "resume.pdf", { type: "application/pdf" })
+                  new File([arrBfr], `${localData['Resume_name']}`, { type: "application/pdf" })
                 );
                 el.files = dt.files;
                 el.dispatchEvent(new Event("change", { bubbles: true }));
-                window.scrollTo({ top: 0, behavior: "instant" });
-              }, 1000);
+                sleep(400);
             });
             continue;
           }
-          //gets converted param
-          const param = params[fields[jobForm][jobParam]];
+
+          let longDelay = false;
+          //gets param from user data
+          const param = fields[jobForm][jobParam];
           if (!res[param]) continue;
 
           let inputElement = form.querySelector(
-            `[name="${jobParam}"], [id="${jobParam}"], [placeholder="${jobParam}"], [aria-label*="${jobParam}"], [aria-labelledby*="${jobParam}"], [aria-describedby*="${jobParam}"], [data-qa*="${jobParam}]`
+            `[id="${jobParam}"], [name="${jobParam}"], [placeholder="${jobParam}"], [aria-label*="${jobParam}"], [aria-labelledby*="${jobParam}"], [aria-describedby*="${jobParam}"], [data-qa*="${jobParam}]`
           );
           if (!inputElement) continue;
+          
+          if (param === "Location (City)"){
+            longDelay = true;
+            res[param] = `${res[param]},${res["Location (State)"]}`
+          }
 
           setNativeValue(inputElement, res[param]);
           //for the dropdown elements
           let btn = inputElement.closest(".select__control--outside-label");
           if (!btn) continue;
 
-          const mouseUpEvent = new MouseEvent("mouseup", {
+          btn.dispatchEvent(new MouseEvent("mouseup", {
             bubbles: true,
             cancelable: true,
-          });
-          btn.dispatchEvent(mouseUpEvent);
-          window.scrollTo({ top: 0, behavior: "instant" });
-          setTimeout(() => {
-            const enterEvent = new KeyboardEvent("keydown", {
-              key: "Enter",
-              code: "Enter",
-              keyCode: 13,
-              which: 13,
-              bubbles: true,
-            });
-            btn.dispatchEvent(enterEvent);
-            window.scrollTo({ top: 0, behavior: "instant" });
-          }, 400);
+          }));
+
+          
+          await sleep(longDelay ? 1000 : 400);
+          btn.dispatchEvent(new KeyboardEvent("keydown", {
+            key: "Enter",
+            code: "Enter",
+            keyCode: 13,
+            which: 13,
+            bubbles: true,
+          }));
+          await sleep(400);  
+          
         }
-        window.scrollTo({ top: 0, behavior: "instant" });
+        scrollToTop();
         break; //found site
       }
     }
   });
 }
+

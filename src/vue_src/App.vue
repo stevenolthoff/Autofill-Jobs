@@ -15,6 +15,10 @@ import InputField from './components/InputField.vue';
   <InputField label="First Name" placeHolder="John" />
   <InputField label="Last Name" placeHolder="Pork" />
   <InputField label="Full Name" placeHolder="John Pork Sr." />
+  <InputField label="Location (Street)" placeHolder="123 Sesame St" />
+  <InputField label="Location (City)" placeHolder="Albuquerque" />
+  <InputField label="Location (State)" placeHolder="New Mexico" />
+  <InputField label="Location (Country)" placeHolder="United States of America" />
   <InputField label="Email" placeHolder="jpork@mit.edu" />
   <InputField label="Phone" placeHolder="123-345-6789" />
   <InputField label="LinkedIn" placeHolder="linkedin.com/in/johnpork" />

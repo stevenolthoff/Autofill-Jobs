@@ -59,7 +59,7 @@ export default {
       chrome.storage.sync.get([props.label], (data) => {
 
         inputValue.value = data[props.label] || '';  // Default to empty string if no value is found
-        if (inputValue.value == '') {
+        if (inputValue.value == '' && props.label === "Resume") {
           chrome.storage.local.get([`${props.label + '_name'}`], (data) => {
 
 inputValue.value = data[`${props.label + '_name'}`] || 'No file found';  // Default to empty string if no value is found
