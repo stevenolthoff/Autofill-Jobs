@@ -1,11 +1,17 @@
 <template>
   <div class="inputFieldDiv">
     <h2>{{ label }}</h2>
-    <input v-if="!dropDowns.includes( label) " type="text" :placeholder="placeHolder" v-model="inputValue" @input="saveData" />
-    <input v-if="label == 'Resume'" type="file" :placeholder="placeHolder" @change="saveResume" />
+    
+    <input v-if="!dropDowns.includes(label) && !files.includes(label)" type="text" :placeholder="placeHolder" v-model="inputValue" @input="saveData" />
+    <div v-if="files.includes(label)" class="inputFieldfileHolder">
+      <input v-if="files.includes(label)" type="file" title="" value="" :placeholder="placeHolder" @change="saveResume" />
+      <h2  v-if="files.includes(label)">{{inputValue}}</h2>
+    </div>
+   
     <select v-if="dropDowns.includes(label)" v-model="inputValue" @change="saveData">
       <option v-for="option in placeHolder" :key="option" :value="option">{{ option }}</option>
     </select>
+ 
   </div>
 </template>
 
@@ -17,12 +23,13 @@ export default {
   data() {
     return {
       dropDowns: ['Gender','Hispanic/Latino','Veteran Status','Disability Status','Degree','Start Date Month','End Date Month','Race'],
+      files: ['Resume']
     };
   },
   setup(props) {
     // Declare a reactive input value using Vue's ref
     const inputValue = ref('');
-   
+    //const inputValue = ref('');
     const saveResume = (event: Event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (file) {
@@ -30,6 +37,10 @@ export default {
         reader.onload = function (e) {
           if (!e.target?.result) return;
           const b64 = (e.target.result as string).split(',')[1];
+          chrome.storage.local.set({ [`${props.label + '_name'}`]: file.name }, () => {
+            inputValue.value = file.name
+            console.log(`${props.label} + _name saved:`, file.name);
+          });
           chrome.storage.local.set({ [props.label]: b64 }, () => {
             console.log(`${props.label} saved:`, b64);
           });
@@ -48,7 +59,14 @@ export default {
       chrome.storage.sync.get([props.label], (data) => {
 
         inputValue.value = data[props.label] || '';  // Default to empty string if no value is found
+        if (inputValue.value == '') {
+          chrome.storage.local.get([`${props.label + '_name'}`], (data) => {
+
+inputValue.value = data[`${props.label + '_name'}`] || 'No file found';  // Default to empty string if no value is found
+});
+        }
       });
+      
     };
 
     // Load data when the component is mounted
