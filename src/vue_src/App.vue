@@ -21,7 +21,8 @@ import InputField from './components/InputField.vue';
   <InputField label="Location (Country)" placeHolder="United States of America" />
   <InputField label="Email" placeHolder="jpork@mit.edu" />
   <InputField label="Phone" placeHolder="123-345-6789" />
-  <InputField label="LinkedIn" placeHolder="linkedin.com/in/johnpork" />
+  <InputField label="LinkedIn" placeHolder="https://linkedin.com/in/johnpork" />
+  <InputField label="Github" placeHolder="https://github.com/andrewmillercode" />
   <InputField label="Website" placeHolder="johnpork.com" />
   <InputField  label="Resume" placeHolder="No file found"/>
 
