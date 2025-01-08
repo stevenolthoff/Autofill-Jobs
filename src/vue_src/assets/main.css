@@ -75,3 +75,36 @@ h3{
   margin:0;
   font-weight: 300;
 }
+
+.starBtn{
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  color: rgb(241, 235, 225);
+  text-shadow: 0.1rem 0.1rem 0.3rem rgba(0, 0, 0, 0.245);
+  background-color: rgb(194, 185, 169);
+  width: fit-content;
+  padding-right: 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  border: 0.22rem solid rgba(0,0,0,0.1)
+}
+.starBtnL{
+  text-shadow: none;
+  text-decoration: none;
+  height: 100%;
+  color: rgb(10, 10, 10);
+  border-radius: 0.4rem;
+  padding: 0.4rem 0rem 0.4rem 0.4rem;
+  margin-right: 1rem;
+  background-color: rgb(219, 209, 192);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+}
+.headerDiv{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

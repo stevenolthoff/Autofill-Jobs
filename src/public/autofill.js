@@ -103,7 +103,7 @@ function setNativeValue(el, value) {
     }
   } else if (el instanceof HTMLSelectElement) {
     for (let o of el.children) {
-      if (o.value.includes(value)) {
+      if (o.value.toLowerCase().includes(value.toLowerCase())) {
         el.value = o.value;
         break;
       }
@@ -173,7 +173,7 @@ async function autofill(form) {
             if (res[param][res[param].length - 1] == ",")
               res[param] = res[param].slice(0, res[param].length - 1);
           }
-          if (param === "Gender" || param === "Race") longDelay = true;
+          if (param === "Gender") longDelay = true;
           setNativeValue(inputElement, res[param]);
           //for the dropdown elements
           let btn = inputElement.closest(".select__control--outside-label");

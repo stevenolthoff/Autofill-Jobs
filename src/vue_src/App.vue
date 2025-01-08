@@ -1,15 +1,15 @@
 <script setup lang="ts">
 
 import InputField from './components/InputField.vue';
-
+import GithubStars from './components/GithubStars.vue';
 </script>
 
 
 <template>
-  <div>
+  <div class="headerDiv">
     <h1>Autofill Jobs</h1>
     <!-- Place this tag where you want the button to render. -->
-<a class="github-button" href="https://github.com/andrewmillercode/Autofill-Jobs" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star andrewmillercode/Autofill-Jobs on GitHub">Star</a>
+    <GithubStars/>
   </div>
   
   <InputField label="First Name" placeHolder="John" />
