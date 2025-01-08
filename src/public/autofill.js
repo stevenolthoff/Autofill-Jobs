@@ -1,7 +1,5 @@
-//import { jsPDF } from "jspdf";
-
-window.addEventListener("load", (event) => {
-  console.log("Page loaded.");
+window.addEventListener("load", (_) => {
+  console.log("Autofill Jobs found page");
   awaitForm();
 });
 
@@ -48,13 +46,14 @@ const fields = {
     "eeo[disabilitySignatureDate]": "Current Date",
   },
   dover: {
-    "firstName" : "First Name",
-    "lastName" : "Last Name",
-    "email" : "Email",
-    "linkedinUrl" : "LinkedIn",
-    "phoneNumber" : "Phone",
-    "resume" : "Resume"
-  }
+    firstName: "First Name",
+    lastName: "Last Name",
+    email: "Email",
+    linkedinUrl: "LinkedIn",
+    phoneNumber: "Phone",
+    resume: "Resume",
+  },
+  workday: [{ "legalNameSection_firstName": "First Name" }, { "legalNameSection_firstName": "First Name" }],
 };
 
 function sleep(ms) {
@@ -88,10 +87,8 @@ function awaitForm() {
         if (form) {
           observer.disconnect();
           autofill(form);
-        }else {
-          form = document.querySelector(
-            "form"
-          );
+        } else {
+          form = document.querySelector("form, #mainContent");
           if (form) {
             observer.disconnect();
             autofill(form);
@@ -111,7 +108,6 @@ function awaitForm() {
     let form = document.querySelector("#application-form, #application_form");
     if (form) autofill(form);
   }
- 
 }
 function setNativeValue(el, value) {
   if (el.type === "checkbox" || el.type === "radio") {
@@ -142,17 +138,22 @@ async function autofill(form) {
     for (let jobForm in fields) {
       if (window.location.hostname.includes(jobForm)) {
         //go through stored params
-
+        console.log(jobForm);
+        if (jobForm == "workday") {
+          workDayAutofill(res);
+          break;
+        }
         for (let jobParam in fields[jobForm]) {
           if (jobParam.toLowerCase() == "resume") {
-            chrome.storage.local.get().then((localData) => {
+            chrome.storage.local.get().then(async (localData) => {
               let resumeDiv = {
                 greenhouse: "#resume",
                 lever: "#resume-upload-input",
-                dover: 'input[type="file"][accept=".pdf"], input[type="file"][accept="application/pdf"]'
+                dover:
+                  'input[type="file"][accept=".pdf"], input[type="file"][accept="application/pdf"]',
               };
-              let el = document.querySelector(resumeDiv[jobForm])
-              
+              let el = document.querySelector(resumeDiv[jobForm]);
+
               const dt = new DataTransfer();
               let arrBfr = base64ToArrayBuffer(localData.Resume);
 
@@ -163,7 +164,7 @@ async function autofill(form) {
               );
               el.files = dt.files;
               el.dispatchEvent(new Event("change", { bubbles: true }));
-              sleep(400);
+              await sleep(400);
             });
             continue;
           }
@@ -222,4 +223,61 @@ async function autofill(form) {
       }
     }
   });
+}
+async function workDayAutofill(res) {
+  let wfields = fields.workday;
+  let jobForm = "workday";
+  while (wfields.length > 0) {
+    await sleep(100);
+    console.log("boom");
+    let jobParam = wfields[-1];
+    let longDelay = false;
+    //gets param from user data
+    const param = fields[jobForm][jobParam];
+    if (!res[param]) continue;
+
+    let inputElement = form.querySelector(
+      `data-automation-id="${jobParam}"]`
+    );
+    if (!inputElement) continue;
+
+    if (param === "Location (City)") {
+      longDelay = true;
+      res[param] = `${res[param] != undefined ? `${res[param]},` : ""}${
+        res["Location (State)"] != undefined
+          ? `${res["Location (State)"]},`
+          : ""
+      }${
+        res["Location (Country)"] != undefined
+          ? `${res["Location (Country)"]},`
+          : ""
+      }`;
+      if (res[param][res[param].length - 1] == ",")
+        res[param] = res[param].slice(0, res[param].length - 1);
+    }
+    if (param === "Gender") longDelay = true;
+    setNativeValue(inputElement, res[param]);
+    //for the dropdown elements
+    let btn = inputElement.closest(".select__control--outside-label");
+    if (!btn) continue;
+
+    btn.dispatchEvent(
+      new MouseEvent("mouseup", {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    await sleep(longDelay ? 1000 : 300);
+    btn.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        keyCode: 13,
+        which: 13,
+        bubbles: true,
+      })
+    );
+    await sleep(300);
+  }
 }

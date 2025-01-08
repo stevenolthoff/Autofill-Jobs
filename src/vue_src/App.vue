@@ -2,7 +2,7 @@
 
 import InputField from './components/InputField.vue';
 import GithubStars from './components/GithubStars.vue';
-import TriggerAutofill from './components/TriggerAutofill.vue';
+
 </script>
 
 
@@ -11,7 +11,7 @@ import TriggerAutofill from './components/TriggerAutofill.vue';
     <h1>Autofill Jobs</h1>
     <!-- Place this tag where you want the button to render. -->
     <GithubStars/>
-    <TriggerAutofill/>
+    
   </div>
   
   <InputField label="First Name" placeHolder="John" />

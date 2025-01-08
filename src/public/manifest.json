@@ -5,21 +5,29 @@
   "description": "Fills in annoying job forms for you, with data from your resume & more.",
   "action": {
     "default_popup": "index.html",
-    "default_icon": "favicon.png"
-    
+    "default_icon": {
+      "16": "favicon.png",
+      "32": "favicon.png",
+      "48": "favicon.png",
+      "128": "favicon.png"
+    }
   },
+
   "permissions": ["storage", "scripting", "activeTab"],
-    "content_scripts": [
-      {
-        "js": ["autofill.js"],
-        "matches": [
-          "https://job-boards.greenhouse.io/*",
-          "https://boards.greenhouse.io/*",
-          "https://jobs.lever.co/*",
-          "https://app.dover.com/*"
-        ],
-        "world": "ISOLATED",
-        "run_at": "document_end"
-      }
-    ]
+  "content_scripts": [
+    {
+      "js": ["autofill.js"],
+      "matches": [
+        "https://job-boards.greenhouse.io/*",
+        "https://boards.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://app.dover.com/*", 
+        "https://*.workday.com/*",
+        "https://*.myworkdayjobs.com/*"
+         
+      ],
+      "world": "ISOLATED",
+      "run_at": "document_end"
+    }
+  ]
 }
