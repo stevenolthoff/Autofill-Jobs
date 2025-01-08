@@ -1,5 +1,5 @@
 <template>
-    <a style="text-decoration: none; color:black;"href="https://github.com/andrewmillercode/Autofill-Jobs">
+    <a style="text-decoration: none; color:black;"href="https://github.com/andrewmillercode/Autofill-Jobs" target="_blank">
     <div class="starBtn">
         <div class="starBtnL">
             <h3>Star</h3>

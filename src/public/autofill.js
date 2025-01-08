@@ -47,6 +47,14 @@ const fields = {
     "eeo[disabilitySignature]": "Full Name",
     "eeo[disabilitySignatureDate]": "Current Date",
   },
+  dover: {
+    "firstName" : "First Name",
+    "lastName" : "Last Name",
+    "email" : "Email",
+    "linkedinUrl" : "LinkedIn",
+    "phoneNumber" : "Phone",
+    "resume" : "Resume"
+  }
 };
 
 function sleep(ms) {
@@ -80,6 +88,14 @@ function awaitForm() {
         if (form) {
           observer.disconnect();
           autofill(form);
+        }else {
+          form = document.querySelector(
+            "form"
+          );
+          if (form) {
+            observer.disconnect();
+            autofill(form);
+          }
         }
         break; //found site
       }
@@ -95,6 +111,7 @@ function awaitForm() {
     let form = document.querySelector("#application-form, #application_form");
     if (form) autofill(form);
   }
+ 
 }
 function setNativeValue(el, value) {
   if (el.type === "checkbox" || el.type === "radio") {
@@ -132,8 +149,10 @@ async function autofill(form) {
               let resumeDiv = {
                 greenhouse: "#resume",
                 lever: "#resume-upload-input",
+                dover: 'input[type="file"][accept=".pdf"], input[type="file"][accept="application/pdf"]'
               };
-              let el = document.querySelector(resumeDiv[jobForm]);
+              let el = document.querySelector(resumeDiv[jobForm])
+              
               const dt = new DataTransfer();
               let arrBfr = base64ToArrayBuffer(localData.Resume);
 
