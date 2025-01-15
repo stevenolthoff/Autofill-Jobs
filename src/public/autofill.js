@@ -53,7 +53,18 @@ const fields = {
     phoneNumber: "Phone",
     resume: "Resume",
   },
-  workday: [{ "legalNameSection_firstName": "First Name" }, { "legalNameSection_firstName": "First Name" }],
+  workday: [
+
+
+    { 'phone-number': "Phone"},
+    { addressSection_postalCode: "Postal/Zip Code"},
+    { addressSection_city: "Location (City)" },
+    { addressSection_countryRegion: "Location (State/Region)" },
+    { addressSection_addressLine1: "Location (Street)" },
+    { legalNameSection_lastName: "Last Name" },
+    { legalNameSection_firstName: "First Name" },
+    { countryDropdown: "Location (Country)" },
+  ],
 };
 
 function sleep(ms) {
@@ -182,8 +193,8 @@ async function autofill(form) {
           if (param === "Location (City)") {
             longDelay = true;
             res[param] = `${res[param] != undefined ? `${res[param]},` : ""}${
-              res["Location (State)"] != undefined
-                ? `${res["Location (State)"]},`
+              res["Location (State/Region)"] != undefined
+                ? `${res["Location (State/Region)"]},`
                 : ""
             }${
               res["Location (Country)"] != undefined
@@ -228,56 +239,44 @@ async function workDayAutofill(res) {
   let wfields = fields.workday;
   let jobForm = "workday";
   while (wfields.length > 0) {
-    await sleep(100);
+    await sleep(200);
     console.log("boom");
-    let jobParam = wfields[-1];
+    let [jobParamKey, jobParamValue] = Object.entries(
+      wfields[wfields.length - 1]
+    )[0];
     let longDelay = false;
     //gets param from user data
-    const param = fields[jobForm][jobParam];
+    const param = jobParamValue;
+    const jobParam = jobParamKey;
+
     if (!res[param]) continue;
 
-    let inputElement = form.querySelector(
-      `data-automation-id="${jobParam}"]`
+    let inputElement = document.querySelector(
+      `[data-automation-id="${jobParam}"]`
     );
     if (!inputElement) continue;
 
-    if (param === "Location (City)") {
-      longDelay = true;
-      res[param] = `${res[param] != undefined ? `${res[param]},` : ""}${
-        res["Location (State)"] != undefined
-          ? `${res["Location (State)"]},`
-          : ""
-      }${
-        res["Location (Country)"] != undefined
-          ? `${res["Location (Country)"]},`
-          : ""
-      }`;
-      if (res[param][res[param].length - 1] == ",")
-        res[param] = res[param].slice(0, res[param].length - 1);
+    inputElement.value = res[param];
+   
+    inputElement.dispatchEvent(new Event("input", { bubbles: true }));
+    await sleep(200);
+    if (inputElement instanceof HTMLButtonElement) {
+      inputElement.click();
+      await sleep(250);
+      //for the dropdown elements(workday version)
+      let dropDown = document.querySelector(
+        'ul[role="listbox"][tabindex="-1"]'
+      );
+      if (dropDown) {
+        let btns = dropDown.querySelectorAll("li div");
+
+        btns.forEach((btndiv) => {
+          if (btndiv.textContent.includes(res[param])) {
+            btndiv.click();
+          }
+        });
+      }
     }
-    if (param === "Gender") longDelay = true;
-    setNativeValue(inputElement, res[param]);
-    //for the dropdown elements
-    let btn = inputElement.closest(".select__control--outside-label");
-    if (!btn) continue;
-
-    btn.dispatchEvent(
-      new MouseEvent("mouseup", {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    await sleep(longDelay ? 1000 : 300);
-    btn.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "Enter",
-        code: "Enter",
-        keyCode: 13,
-        which: 13,
-        bubbles: true,
-      })
-    );
-    await sleep(300);
+    wfields.pop();
   }
 }

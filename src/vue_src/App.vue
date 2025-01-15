@@ -22,8 +22,9 @@ import PrivacyToggle from './components/PrivacyToggle.vue';
   <InputField label="Full Name" placeHolder="John Pork Sr." />
   <InputField label="Location (Street)" placeHolder="123 Sesame St" />
   <InputField label="Location (City)" placeHolder="Albuquerque" />
-  <InputField label="Location (State)" placeHolder="New Mexico" />
+  <InputField label="Location (State/Region)" placeHolder="New Mexico" />
   <InputField label="Location (Country)" placeHolder="United States of America" />
+  <InputField label="Postal/Zip Code" placeHolder="87104" />
   <InputField label="Email" placeHolder="jpork@mit.edu" />
   <InputField label="Phone" placeHolder="123-345-6789" />
   <InputField label="LinkedIn" placeHolder="https://linkedin.com/in/johnpork" />
