@@ -19,11 +19,27 @@ body {
   align-items: left;
   gap: 1rem;
   --c1 : rgb(25, 66, 36);
+  --c2 : rgb(225, 163, 163);
   font-family: "Lexend";
   font-weight: 100;
   
 }
-
+.aRight {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 0;
+  flex-shrink: 0;
+  align-items: end;
+}
+.aSelfTop {
+  align-self: flex-start;
+}
+.gS {
+  gap:0.25rem;
+}
+.gM {
+  gap:0.5rem;
+}
 .inputFieldDiv {
   display: flex;
   gap: 1rem;
@@ -75,6 +91,13 @@ h3{
   margin:0;
   font-weight: 300;
 }
+.privacyToggle {
+  background-color: #c2b9a9;
+  border: 0.22rem solid rgba(0,0,0,0.1);
+  border-radius: 0.5rem;
+  width: fit-content;
+ 
+}
 
 .starBtn{
   text-decoration: none;
@@ -88,7 +111,7 @@ h3{
   padding-right: 1rem;
   border-radius: 0.5rem;
   cursor: pointer;
-  border: 0.22rem solid rgba(0,0,0,0.1)
+  border: 0.22rem solid rgba(0,0,0,0.1);
 }
 .starBtnL{
   text-shadow: none;

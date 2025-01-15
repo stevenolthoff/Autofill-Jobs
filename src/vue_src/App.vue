@@ -2,17 +2,20 @@
 
 import InputField from './components/InputField.vue';
 import GithubStars from './components/GithubStars.vue';
+import PrivacyToggle from './components/PrivacyToggle.vue';
 
 </script>
 
 
 <template>
   <div class="headerDiv">
-    <h1>Autofill Jobs</h1>
-    <!-- Place this tag where you want the button to render. -->
+    <h1 class="aSelfTop">Autofill Jobs</h1>
+    <div class="aRight gM">
     <GithubStars/>
-    
+    <PrivacyToggle/>
+    </div>
   </div>
+  
   
   <InputField label="First Name" placeHolder="John" />
   <InputField label="Last Name" placeHolder="Pork" />

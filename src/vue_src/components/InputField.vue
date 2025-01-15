@@ -2,7 +2,7 @@
   <div class="inputFieldDiv">
     <h2>{{ label }}</h2>
     
-    <input v-if="!dropDowns.includes(label) && !files.includes(label)" type="text" :placeholder="placeHolder" v-model="inputValue" @input="saveData" />
+    <input v-if="!dropDowns.includes(label) && !files.includes(label)" :type="hidden" :placeholder="placeHolder" v-model="inputValue" @input="saveData" />
     <div v-if="files.includes(label)" class="inputFieldfileHolder">
       <input v-if="files.includes(label)" type="file" title="" value="" :placeholder="placeHolder" @change="saveResume" />
       <h2  v-if="files.includes(label)">{{inputValue}}</h2>
@@ -16,8 +16,9 @@
 </template>
 
 <script lang="ts">
-import { ref } from 'vue';
-
+import type { Ref } from 'vue';
+import { ref,watch } from 'vue';
+import { usePrivacy } from '@/composables/Privacy';
 export default {
   props: ['label', 'placeHolder'],
   data() {
@@ -29,7 +30,14 @@ export default {
   setup(props) {
     // Declare a reactive input value using Vue's ref
     const inputValue = ref('');
-    //const inputValue = ref('');
+    
+
+// Use the composable
+const { privacy } = usePrivacy();
+const hidden = ref('text');
+watch(privacy, (newVal) => {
+  hidden.value = newVal ? 'password' : 'text';
+});
     const saveResume = (event: Event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (file) {
@@ -75,7 +83,8 @@ inputValue.value = data[`${props.label + '_name'}`] || 'No file found';  // Defa
     return {
       inputValue,
       saveData,
-      saveResume
+      saveResume,
+      hidden
     };
   },
 };
