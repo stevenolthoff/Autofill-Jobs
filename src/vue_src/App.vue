@@ -20,6 +20,11 @@ import PrivacyToggle from './components/PrivacyToggle.vue';
   <InputField label="First Name" placeHolder="John" />
   <InputField label="Last Name" placeHolder="Pork" />
   <InputField label="Full Name" placeHolder="John Pork Sr." />
+  <InputField label="Location (Street)" placeHolder="123 Sesame St" />
+  <InputField label="Location (City)" placeHolder="Albuquerque" />
+  <InputField label="Location (State/Region)" placeHolder="New Mexico" />
+  <InputField label="Location (Country)" placeHolder="United States of America" />
+  <InputField label="Postal/Zip Code" placeHolder="87104" />
   <InputField label="Email" placeHolder="jpork@mit.edu" />
   <InputField label="Phone" placeHolder="123-345-6789" />
   <InputField label="LinkedIn" placeHolder="https://linkedin.com/in/johnpork" />
@@ -30,9 +35,9 @@ import PrivacyToggle from './components/PrivacyToggle.vue';
   <h2 class="subheading">Location</h2>
   <InputField label="Location (Street)" placeHolder="123 Sesame St" />
   <InputField label="Location (City)" placeHolder="Albuquerque" />
-  <InputField label="Location (State)" placeHolder="New Mexico" />
+  <InputField label="Location (State/Region)" placeHolder="New Mexico" />
   <InputField label="Location (Country)" placeHolder="United States of America" />
-
+  <InputField label="Postal/Zip Code" placeHolder="87104" />
   <h2 class="subheading">Education</h2>
   <InputField label="School" placeHolder="Massachusetts Institute of Technology" />
   <InputField label="Degree" :placeHolder="[
