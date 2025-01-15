@@ -53,7 +53,7 @@ const fields = {
     phoneNumber: "Phone",
     resume: "Resume",
   },
-  workday: [{ "legalNameSection_firstName": "First Name" }, { "legalNameSection_firstName": "First Name" }],
+  workday: [{ "legalNameSection_firstName": "First Name" }]
 };
 
 function sleep(ms) {

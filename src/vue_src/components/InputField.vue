@@ -1,43 +1,42 @@
 <template>
   <div class="inputFieldDiv">
     <h2>{{ label }}</h2>
-    
-    <input v-if="!dropDowns.includes(label) && !files.includes(label)" :type="hidden" :placeholder="placeHolder" v-model="inputValue" @input="saveData" />
+
+    <input v-if="!dropDowns.includes(label) && !files.includes(label)" :type="hidden" :placeholder="placeHolder"
+      v-model="inputValue" @input="saveData" @focus="onFocus" @blur="onBlur" />
     <div v-if="files.includes(label)" class="inputFieldfileHolder">
-      <input v-if="files.includes(label)" type="file" title="" value="" :placeholder="placeHolder" @change="saveResume" />
-      <h2  v-if="files.includes(label)">{{inputValue}}</h2>
+      <input v-if="files.includes(label)" type="file" title="" value="" :placeholder="placeHolder"
+        @change="saveResume" />
+      <h2 v-if="files.includes(label)">{{ inputValue }}</h2>
     </div>
-   
+
     <select v-if="dropDowns.includes(label)" v-model="inputValue" @change="saveData">
       <option v-for="option in placeHolder" :key="option" :value="option">{{ option }}</option>
     </select>
- 
+
   </div>
 </template>
 
 <script lang="ts">
-import type { Ref } from 'vue';
-import { ref,watch } from 'vue';
+import { ref, watch } from 'vue';
 import { usePrivacy } from '@/composables/Privacy';
 export default {
   props: ['label', 'placeHolder'],
   data() {
     return {
-      dropDowns: ['Gender','Hispanic/Latino','Veteran Status','Disability Status','Degree','Start Date Month','End Date Month','Race'],
+      dropDowns: ['Gender', 'Hispanic/Latino', 'Veteran Status', 'Disability Status', 'Degree', 'Start Date Month', 'End Date Month', 'Race'],
       files: ['Resume']
     };
   },
   setup(props) {
     // Declare a reactive input value using Vue's ref
     const inputValue = ref('');
-    
-
-// Use the composable
-const { privacy } = usePrivacy();
-const hidden = ref('text');
-watch(privacy, (newVal) => {
-  hidden.value = newVal ? 'password' : 'text';
-});
+    // Use the composable
+    const { privacy } = usePrivacy();
+    const hidden = ref('text');
+    watch(privacy, (newVal) => {
+      hidden.value = newVal ? 'password' : 'text';
+    });
     const saveResume = (event: Event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (file) {
@@ -70,13 +69,17 @@ watch(privacy, (newVal) => {
         if (inputValue.value == '' && props.label === "Resume") {
           chrome.storage.local.get([`${props.label + '_name'}`], (data) => {
 
-inputValue.value = data[`${props.label + '_name'}`] || 'No file found';  // Default to empty string if no value is found
-});
+            inputValue.value = data[`${props.label + '_name'}`] || 'No file found';  // Default to empty string if no value is found
+          });
         }
       });
-      
     };
-
+    const onFocus = () => {
+      if (privacy.value) hidden.value = "text";
+    };
+    const onBlur = () => {
+      if (privacy.value) hidden.value = "password";
+    };
     // Load data when the component is mounted
     loadData();
 
@@ -84,6 +87,8 @@ inputValue.value = data[`${props.label + '_name'}`] || 'No file found';  // Defa
       inputValue,
       saveData,
       saveResume,
+      onFocus,
+      onBlur,
       hidden
     };
   },
