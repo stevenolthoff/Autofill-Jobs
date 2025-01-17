@@ -54,10 +54,15 @@ const fields = {
     resume: "Resume",
   },
   workday: [
-
-
-    { 'phone-number': "Phone"},
-    { addressSection_postalCode: "Postal/Zip Code"},
+    { linkedinQuestion: "LinkedIn" },
+    { "file-upload-input-ref": "Resume" },
+    { gpa: "GPA" },
+    { multiSelectContainer: "Discipline" },
+    { degree: "Degree" },
+    { school: "School" },
+    { "phone-number": "Phone" },
+    { "phone-device-type": "Phone Type" },
+    { addressSection_postalCode: "Postal/Zip Code" },
     { addressSection_city: "Location (City)" },
     { addressSection_countryRegion: "Location (State/Region)" },
     { addressSection_addressLine1: "Location (Street)" },
@@ -164,18 +169,22 @@ async function autofill(form) {
                   'input[type="file"][accept=".pdf"], input[type="file"][accept="application/pdf"]',
               };
               let el = document.querySelector(resumeDiv[jobForm]);
+              el.addEventListener('submit', function(event) {
+                event.preventDefault();
+              });  
+              if (localData.Resume) {
+                const dt = new DataTransfer();
+                let arrBfr = base64ToArrayBuffer(localData.Resume);
 
-              const dt = new DataTransfer();
-              let arrBfr = base64ToArrayBuffer(localData.Resume);
-
-              dt.items.add(
-                new File([arrBfr], `${localData["Resume_name"]}`, {
-                  type: "application/pdf",
-                })
-              );
-              el.files = dt.files;
-              el.dispatchEvent(new Event("change", { bubbles: true }));
-              await sleep(400);
+                dt.items.add(
+                  new File([arrBfr], `${localData["Resume_name"]}`, {
+                    type: "application/pdf",
+                  })
+                );
+                el.files = dt.files;
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+                await sleep(400);
+              }
             });
             continue;
           }
@@ -192,13 +201,9 @@ async function autofill(form) {
 
           if (param === "Location (City)") {
             longDelay = true;
-            res[param] = `${res[param] != undefined ? `${res[param]},` : ""}${
+            res[param] = `${res[param] != undefined ? `${res[param]},` : ""} ${
               res["Location (State/Region)"] != undefined
                 ? `${res["Location (State/Region)"]},`
-                : ""
-            }${
-              res["Location (Country)"] != undefined
-                ? `${res["Location (Country)"]},`
                 : ""
             }`;
             if (res[param][res[param].length - 1] == ",")
@@ -237,29 +242,68 @@ async function autofill(form) {
 }
 async function workDayAutofill(res) {
   let wfields = fields.workday;
-  let jobForm = "workday";
   while (wfields.length > 0) {
-    await sleep(200);
-    console.log("boom");
+    await sleep(150);
+
     let [jobParamKey, jobParamValue] = Object.entries(
       wfields[wfields.length - 1]
     )[0];
-    let longDelay = false;
     //gets param from user data
     const param = jobParamValue;
     const jobParam = jobParamKey;
-
+    console.log(jobParam);
     if (!res[param]) continue;
 
     let inputElement = document.querySelector(
-      `[data-automation-id="${jobParam}"]`
+      `[data-automation-id="${jobParam}"], [data-automation-label="${res[param]}"]`
     );
     if (!inputElement) continue;
+    if (jobParam == "multiSelectContainer") {
+      inputElement = inputElement.querySelector("div input");
+      inputElement.click();
+      await sleep(300);
+      inputElement.setAttribute("value", res[param]);
+      inputElement.value = res[param];
+      inputElement.dispatchEvent(new Event("change", { bubbles: true }));
+      await sleep(200);
+      inputElement.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+        })
+      );
+      await sleep(200);
+      wfields.pop();
+      continue;
+    }
+    if (jobParam == "file-upload-input-ref") {
+      chrome.storage.local.get().then(async (localData) => {
+        console.log(localData);
+        const dt = new DataTransfer();
+        let arrBfr = base64ToArrayBuffer(localData.Resume);
 
+        dt.items.add(
+          new File([arrBfr], `${localData["Resume_name"]}`, {
+            type: "application/pdf",
+          })
+        );
+        inputElement.files = dt.files;
+        inputElement.dispatchEvent(new Event("change", { bubbles: true }));
+        console.log("filled resume");
+        await sleep(400);
+        wfields.pop();
+      });
+      continue;
+    }
+    inputElement.setAttribute("value", res[param]);
     inputElement.value = res[param];
-   
-    inputElement.dispatchEvent(new Event("input", { bubbles: true }));
-    await sleep(200);
+    inputElement.focus();
+    inputElement.blur();
+    inputElement.dispatchEvent(new Event("change", { bubbles: true }));
+    await sleep(150);
     if (inputElement instanceof HTMLButtonElement) {
       inputElement.click();
       await sleep(250);
@@ -271,7 +315,10 @@ async function workDayAutofill(res) {
         let btns = dropDown.querySelectorAll("li div");
 
         btns.forEach((btndiv) => {
-          if (btndiv.textContent.includes(res[param])) {
+          if (
+            btndiv.textContent.includes(res[param]) ||
+            res[param].includes(btndiv.textContent)
+          ) {
             btndiv.click();
           }
         });

@@ -24,7 +24,7 @@ export default {
   props: ['label', 'placeHolder'],
   data() {
     return {
-      dropDowns: ['Gender', 'Hispanic/Latino', 'Veteran Status', 'Disability Status', 'Degree', 'Start Date Month', 'End Date Month', 'Race'],
+      dropDowns: ['Gender', 'Hispanic/Latino', 'Veteran Status', 'Disability Status', 'Degree', 'Start Date Month', 'End Date Month', 'Race','Phone Type'],
       files: ['Resume']
     };
   },

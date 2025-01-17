@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap');
 
 body {
+  overscroll-behavior: none;
   box-sizing: border-box;
   padding: 0;
   margin:0;
@@ -44,6 +45,7 @@ body {
   display: flex;
   gap: 1rem;
   align-items: center;
+  justify-content: space-between;
 }
 .inputFieldDiv :nth-child(2) {
   width: fit-content;
@@ -56,7 +58,7 @@ body {
   margin:0;
   height:fit-content;
   text-overflow: ellipsis;
-  max-width: 300px;
+  max-width: 14rem;
   color:var(--c1);
   caret-shape: block; caret-color: var(--c1);
 }
