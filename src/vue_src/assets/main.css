@@ -67,10 +67,11 @@ body {
 }
 select.password {
   color:transparent !important;
-  background-image: radial-gradient(var(--c1) 12%, transparent 0%);
-  background-size: 1.7rem 1.7rem;
-  background-position: 0.4rem 0.3rem;
+  background-image: radial-gradient(var(--c1) 60%, transparent 0%);
+  background-size: 0.3rem 0.3rem;
+  background-position: 0.5rem 1rem;
   background-clip: content-box;
+  background-repeat: repeat-x;
 }
 
 .inputFieldfileHolder :nth-child(2) {
