@@ -1,8 +1,8 @@
 <script setup lang="ts">
-
-import InputField from './components/InputField.vue';
-import GithubStars from './components/GithubStars.vue';
-import PrivacyToggle from './components/PrivacyToggle.vue';
+//Component imports
+import InputField from '@/components/InputField.vue';
+import GithubStars from '@/components/GithubStars.vue';
+import PrivacyToggle from '@/components/PrivacyToggle.vue';
 
 </script>
 
@@ -10,12 +10,11 @@ import PrivacyToggle from './components/PrivacyToggle.vue';
 <template>
   <div class="headerDiv">
     <h1 class="aSelfTop">Autofill Jobs</h1>
-    <div class="aRight gM">
+    <div class="aRight gM mTs">
     <GithubStars/>
     <PrivacyToggle/>
     </div>
   </div>
-  
   
   <InputField label="First Name" placeHolder="John" />
   <InputField label="Last Name" placeHolder="Pork" />

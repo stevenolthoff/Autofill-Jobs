@@ -1,8 +1,8 @@
 window.addEventListener("load", (_) => {
-  console.log("Autofill Jobs found page");
+  console.log("AutofillJobs: found job page.");
   awaitForm();
 });
-
+const applicationFormQuery = "#application-form, #application_form, #applicationform";
 //Fields per job board map to the stored params array in the extension
 const fields = {
   greenhouse: {
@@ -109,25 +109,31 @@ function base64ToArrayBuffer(base64) {
 
   return arrayBuffer;
 }
-function awaitForm() {
+async function awaitForm() {
   // Create a MutationObserver to detect changes in the DOM
   const observer = new MutationObserver((_, observer) => {
     for (let jobForm in fields) {
       if (window.location.hostname.includes(jobForm)) {
-        let form = document.querySelector(
-          "#application-form, #application_form"
-        );
+        //workday
+        if (jobForm == "workday") {
+          autofill(null);
+          return;
+        }
+
+        let form = document.querySelector(applicationFormQuery);
         if (form) {
           observer.disconnect();
           autofill(form);
+          return;
         } else {
           form = document.querySelector("form, #mainContent");
           if (form) {
             observer.disconnect();
             autofill(form);
+            return;
           }
         }
-        break; //found site
+        
       }
     }
   });
@@ -136,11 +142,9 @@ function awaitForm() {
     childList: true,
     subtree: true,
   });
-
-  if (window.location.hostname.includes("lever")) {
-    let form = document.querySelector("#application-form, #application_form");
-    if (form) autofill(form);
-  }
+  await sleep(250);
+  let form = document.querySelector(applicationFormQuery);
+  if (form) autofill(form);
 }
 function setNativeValue(el, value) {
   if (el.type === "checkbox" || el.type === "radio") {
@@ -167,11 +171,9 @@ async function autofill(form) {
       year: "numeric",
     }).format(new Date())}`;
     await sleep(1500);
-    console.log(res);
     for (let jobForm in fields) {
       if (window.location.hostname.includes(jobForm)) {
         //go through stored params
-        console.log(jobForm);
         if (jobForm == "workday") {
           workDayAutofill(res);
           break;
@@ -181,12 +183,16 @@ async function autofill(form) {
             chrome.storage.local.get().then(async (localData) => {
               await sleep(300);
               let resumeDiv = {
-                greenhouse: "#resume",
-                lever: "#resume-upload-input",
+                greenhouse: 'input[id="resume"]',
+                lever: 'input[id="resume-upload-input"]',
                 dover:
                   'input[type="file"][accept=".pdf"], input[type="file"][accept="application/pdf"]',
               };
               let el = document.querySelector(resumeDiv[jobForm]);
+              if (!el) {
+                //old greenhouse forms
+                el = document.querySelector('input[type="file"]');
+              }
               el.addEventListener("submit", function (event) {
                 event.preventDefault();
               });
@@ -334,7 +340,6 @@ async function workDayAutofill(res) {
     }
     if (jobParam == "file-upload-input-ref") {
       chrome.storage.local.get().then(async (localData) => {
-        console.log(localData);
         const dt = new DataTransfer();
         let arrBfr = base64ToArrayBuffer(localData.Resume);
 
@@ -345,7 +350,7 @@ async function workDayAutofill(res) {
         );
         inputElement.files = dt.files;
         inputElement.dispatchEvent(new Event("change", { bubbles: true }));
-        console.log("filled resume");
+        console.log("AutofillJobs: Resume Uploaded.");
         await sleep(400);
         wfields.pop();
       });
