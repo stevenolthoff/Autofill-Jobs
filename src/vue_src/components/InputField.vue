@@ -9,8 +9,9 @@
         @change="saveResume" />
       <h2 v-if="files.includes(label)">{{ inputValue }}</h2>
     </div>
-
-    <select v-if="dropDowns.includes(label)" v-model="inputValue" @change="saveData">
+    
+    <select :class=hidden v-if="dropDowns.includes(label)" v-model="inputValue" @change="dropdownPrivacy"  >
+      
       <option v-for="option in placeHolder" :key="option" :value="option">{{ option }}</option>
     </select>
 
@@ -28,6 +29,7 @@ export default {
       files: ['Resume']
     };
   },
+  
   setup(props) {
     // Declare a reactive input value using Vue's ref
     const inputValue = ref('');
@@ -80,6 +82,10 @@ export default {
     const onBlur = () => {
       if (privacy.value) hidden.value = "password";
     };
+    const dropdownPrivacy = () => {
+      saveData();
+      if (privacy.value) onBlur();
+    }
     // Load data when the component is mounted
     loadData();
 
@@ -87,9 +93,10 @@ export default {
       inputValue,
       saveData,
       saveResume,
+      hidden,
       onFocus,
       onBlur,
-      hidden
+      dropdownPrivacy
     };
   },
 };

@@ -19,7 +19,7 @@ body {
   flex-direction: column;
   align-items: left;
   gap: 1rem;
-  --c1 : rgb(25, 66, 36);
+  --c1 : rgb(45, 67, 51);
   --c2 : rgb(225, 163, 163);
   font-family: "Lexend";
   font-weight: 100;
@@ -43,6 +43,7 @@ body {
 .mTs {
   margin-top: 0.5rem;
 }
+
 .inputFieldDiv {
   display: flex;
   gap: 1rem;
@@ -53,17 +54,25 @@ body {
   width: fit-content;
   background-color: transparent;
   border-radius: 1rem;
-  border: 0.3rem solid rgba(0, 0, 0, 0.093);
+  border: 0.2rem solid rgba(0, 0, 0, 0.093);
   outline: 0;
   font-family: "Lexend";
   padding:0.5rem;
   margin:0;
   height:fit-content;
   text-overflow: ellipsis;
-  max-width: 14rem;
+  max-width: 15rem;
   color:var(--c1);
   caret-shape: block; caret-color: var(--c1);
 }
+select.password {
+  color:transparent !important;
+  background-image: radial-gradient(var(--c1) 12%, transparent 0%);
+  background-size: 1.7rem 1.7rem;
+  background-position: 0.4rem 0.3rem;
+  background-clip: content-box;
+}
+
 .inputFieldfileHolder :nth-child(2) {
  border:none;
  max-width: 300px;
@@ -76,8 +85,9 @@ body {
 }
 input[type='file'] {
   color: rgba(0, 0, 0, 0);
-
+  
 }
+
 .subheading {
   font-family: "Cormorant Garamond", serif;
   margin-top: 4rem;
@@ -103,7 +113,7 @@ h3{
 }
 .privacyToggle {
   background-color: #c2b9a9;
-  border: 0.22rem solid rgba(0,0,0,0.1);
+  border: 0.15rem solid rgba(0,0,0,0.1);
   border-radius: 0.5rem;
   width: fit-content;
  
@@ -121,7 +131,7 @@ h3{
   padding-right: 1rem;
   border-radius: 0.5rem;
   cursor: pointer;
-  border: 0.22rem solid rgba(0,0,0,0.1);
+  border: 0.15rem solid rgba(0,0,0,0.1);
 }
 .starBtnL{
   text-shadow: none;
@@ -143,3 +153,4 @@ h3{
   margin-bottom: 1.5rem;
   margin-top:1rem;
 }
+
