@@ -45,3 +45,8 @@ npm run build
 # Then, navigate to chrome://extensions and load unpacked the dist folder.
 ```
 Or download it from the Chrome Web Store (coming soon)
+
+## License 📝
+
+This project is using the MIT License. If you'd like to report an issue with the extension, please use the issues tab. If you enjoy using this extension, feel free to leave a ⭐ on this repository. 
+
