@@ -27,10 +27,13 @@ import PrivacyToggle from './components/PrivacyToggle.vue';
     'Mobile',
     'Office Phone'
   ]" />
+  <InputField  label="Resume" placeHolder="No file found"/>
+
+  <h2 class="subheading">Socials</h2>
+  <InputField label="Twitter/X" placeHolder="https://x.com/" />
   <InputField label="LinkedIn" placeHolder="https://linkedin.com/in/johnpork" />
   <InputField label="Github" placeHolder="https://github.com/andrewmillercode" />
   <InputField label="Website" placeHolder="johnpork.com" />
-  <InputField  label="Resume" placeHolder="No file found"/>
 
   <h2 class="subheading">Location</h2>
   <InputField label="Location (Street)" placeHolder="123 Sesame St" />
@@ -85,6 +88,7 @@ import PrivacyToggle from './components/PrivacyToggle.vue';
   ]" />
   <InputField label="End Date Year" placeHolder="2025" />
   <InputField label="GPA" placeHolder="3.94" />
+  <InputField label="Current Employer" placeHolder="Apple" />
 
   <h2 class="subheading">Voluntary Identification</h2>
   <InputField label="Gender" :placeHolder="['Male', 'Female', 'Decline To Self Identify']" />

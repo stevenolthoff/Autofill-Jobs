@@ -8,11 +8,18 @@ const fields = {
   greenhouse: {
     first_name: "First Name",
     last_name: "Last Name",
+    "Preferred Name": "Full Name",
     email: "Email",
     phone: "Phone",
     LinkedIn: "LinkedIn",
+    Github: "Github",
+    Twitter: "Twitter/X",
+    X: "Twitter/X",
     "candidate-location": "Location (City)",
     Website: "Website",
+    Portfolio: "Website",
+    Employer: "Current Employer",
+    "Current Company": "Current Employer",
     resume: "Resume",
     school: "School",
     degree: "Degree",
@@ -34,10 +41,18 @@ const fields = {
     email: "Email",
     phone: "Phone",
     location: "Location (City)",
+    org : "Current Employer",
+    company : "Current Employer",
+    employer : "Current Employer",
     "urls[LinkedIn]": "LinkedIn",
     "urls[GitHub]": "Github",
     "urls[Linkedin]": "LinkedIn",
+    "urls[X]" : "Twitter/X",
+    "urls[Twitter]" : "Twitter/X",
     "urls[Portfolio]": "Website",
+    "urls[Link to portfolio]" : "Website",
+    "website" : "Website",
+    "portfolio" : "Website",
     "eeo[gender]": "Gender",
     "eeo[race]": "Race",
     "eeo[veteran]": "Veteran Status",
@@ -49,7 +64,9 @@ const fields = {
     firstName: "First Name",
     lastName: "Last Name",
     email: "Email",
+    phone :"Phone",
     linkedinUrl: "LinkedIn",
+    github : "Github",
     phoneNumber: "Phone",
     resume: "Resume",
   },
@@ -149,7 +166,7 @@ async function autofill(form) {
       month: "2-digit",
       year: "numeric",
     }).format(new Date())}`;
-    sleep(200);
+    await sleep(1500);
     console.log(res);
     for (let jobForm in fields) {
       if (window.location.hostname.includes(jobForm)) {
@@ -162,6 +179,7 @@ async function autofill(form) {
         for (let jobParam in fields[jobForm]) {
           if (jobParam.toLowerCase() == "resume") {
             chrome.storage.local.get().then(async (localData) => {
+              await sleep(300);
               let resumeDiv = {
                 greenhouse: "#resume",
                 lever: "#resume-upload-input",
@@ -169,9 +187,9 @@ async function autofill(form) {
                   'input[type="file"][accept=".pdf"], input[type="file"][accept="application/pdf"]',
               };
               let el = document.querySelector(resumeDiv[jobForm]);
-              el.addEventListener('submit', function(event) {
+              el.addEventListener("submit", function (event) {
                 event.preventDefault();
-              });  
+              });
               if (localData.Resume) {
                 const dt = new DataTransfer();
                 let arrBfr = base64ToArrayBuffer(localData.Resume);
@@ -183,8 +201,23 @@ async function autofill(form) {
                 );
                 el.files = dt.files;
                 el.dispatchEvent(new Event("change", { bubbles: true }));
-                await sleep(400);
+                await sleep(300);
               }
+              /*
+              Test query:
+               let el = document.querySelector('#resume');
+              el.addEventListener('submit', function(event) {
+                event.preventDefault();
+              });  
+                const dt = new DataTransfer();
+                dt.items.add(
+                  new File(["Test"], "Test.txt", {
+  type: "text/plain",
+});
+                );
+                el.files = dt.files;
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+                */
             });
             continue;
           }
@@ -193,9 +226,29 @@ async function autofill(form) {
           //gets param from user data
           const param = fields[jobForm][jobParam];
           if (!res[param]) continue;
+          let normalizedParam = jobParam.toLowerCase();
+          let inputElement = Array.from(form.querySelectorAll("input")).find(
+            (input) => {
+              const attributes = [
+                input.id?.toLowerCase().trim(),
+                input.name?.toLowerCase().trim(),
+                input.placeholder?.toLowerCase().trim(),
+                input.getAttribute("aria-label")?.toLowerCase().trim(),
+                input.getAttribute("aria-labelledby")?.toLowerCase().trim(),
+                input.getAttribute("aria-describedby")?.toLowerCase().trim(),
+                input.getAttribute("data-qa")?.toLowerCase().trim(),
+              ];
 
-          let inputElement = form.querySelector(
-            `[id="${jobParam}"], [name="${jobParam}"], [placeholder="${jobParam}"], [aria-label*="${jobParam}"], [aria-labelledby*="${jobParam}"], [aria-describedby*="${jobParam}"], [data-qa*="${jobParam}]`
+              for (let i = 0; i < attributes.length; i++) {
+                if (
+                  attributes[i] != undefined &&
+                  attributes[i].includes(normalizedParam)
+                ) {
+                  return true;
+                }
+              }
+              return false;
+            }
           );
           if (!inputElement) continue;
 
