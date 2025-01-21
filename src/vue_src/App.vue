@@ -1,13 +1,19 @@
 <script setup lang="ts">
 //Component imports
 import InputField from '@/components/InputField.vue';
+import GridDataField from '@/components/GridDataField.vue';
 import GithubStars from '@/components/GithubStars.vue';
 import PrivacyToggle from '@/components/PrivacyToggle.vue';
-
+import Explanation from '@/components/Explanation.vue';
+import EnterSkill from '@/components/EnterSkill.vue';
+import EnterWorkExperience from '@/components/EnterWorkExperience.vue';
 </script>
 
 
 <template>
+  <EnterWorkExperience/>
+  <EnterSkill/>
+  <Explanation/>
   <div class="headerDiv">
     <h1 class="aSelfTop">Autofill Jobs</h1>
     <div class="aRight gM mTs">
@@ -26,8 +32,13 @@ import PrivacyToggle from '@/components/PrivacyToggle.vue';
     'Mobile',
     'Office Phone'
   ]" />
+  <h2 class="subheading">Experience</h2>
   <InputField  label="Resume" placeHolder="No file found"/>
 
+  <GridDataField label="Work Experience" />
+  <GridDataField label="Skills" />
+
+  <InputField label="API Key" explanation="The API Key field requires a Gemini-2.0-experiemental api key. This field is optional and is used to autofill the work experience and skills fields directly from your resume, accurately." placeHolder="AIyKwaSyBTOk..." />
   <h2 class="subheading">Socials</h2>
   <InputField label="Twitter/X" placeHolder="https://x.com/" />
   <InputField label="LinkedIn" placeHolder="https://linkedin.com/in/johnpork" />
@@ -105,4 +116,5 @@ import PrivacyToggle from '@/components/PrivacyToggle.vue';
     :placeHolder="['I am not a protected veteran', 'I identify as one or more of the classifications of a protected veteran', 'I don\'t wish to answer']" />
   <InputField label="Disability Status"
     :placeHolder="['Yes, I have a disability, or have had one in the past', 'No, I do not have a disability and have not had one in the past', 'I do not want to answer']" />
+
 </template>

@@ -21,11 +21,16 @@ Job applications, especially on platforms like Workday, take way too long to fil
 I wanted to bring the ease-of-use of LinkedIn Easy Apply to other job platforms.
 
 
-
 ## How it works ✍️
 
- - Data is stored using chrome.storage.sync with the exception of large files like résumés, which are stored with chrome.storage.local
+ - Data is stored using chrome.storage.sync with the exception of larger files like résumés, which are stored with chrome.storage.local
  - Depending on platform (Greenhouse uses React components, Lever does not) the extension fills in the fields with the data
+
+## Supported Platforms ✅
+ - Greenhouse 
+ - Lever 
+ - Dover 
+ - Workday 
 
 ## Getting Started 🚀
 You can either build the extension locally:
@@ -48,5 +53,5 @@ Or download it from the Chrome Web Store (coming soon)
 
 ## License 📝
 
-This project is using the MIT License. If you'd like to report an issue with the extension, please use the issues tab. If you enjoy using this extension, feel free to leave a ⭐ on this repository. 
+This project is using the MIT License. If you'd like to report an issue with the extension, please use the issues tab. If you enjoy using this extension, please feel free to leave a ⭐. 
 
