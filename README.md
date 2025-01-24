@@ -25,6 +25,7 @@ I wanted to bring the ease-of-use of LinkedIn Easy Apply to other job platforms.
 
  - Data is stored using chrome.storage.sync with the exception of larger files like résumés, which are stored with chrome.storage.local
  - Depending on platform (Greenhouse uses React components, Lever does not) the extension fills in the fields with the data
+ - On Workday, ensure you have the tab open in full screen as some essential elements don't get rendered on smaller resolutions.
 
 ## Supported Platforms ✅
  - Greenhouse 

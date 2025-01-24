@@ -38,7 +38,7 @@ import EnterWorkExperience from '@/components/EnterWorkExperience.vue';
   <GridDataField label="Work Experience" />
   <GridDataField label="Skills" />
 
-  <InputField label="API Key" explanation="The API Key field requires a Gemini-2.0-experiemental api key. This field is optional and is used to autofill the work experience and skills fields directly from your resume, accurately." placeHolder="AIyKwaSyBTOk..." />
+  <InputField label="API Key" explanation="The API Key field requires a Gemini-1.5-flash api key. This field is optional and is used to autofill the work experience and skills fields directly from your resume." placeHolder="AIyKwaSyBTOk..." />
   <h2 class="subheading">Socials</h2>
   <InputField label="Twitter/X" placeHolder="https://x.com/" />
   <InputField label="LinkedIn" placeHolder="https://linkedin.com/in/johnpork" />
