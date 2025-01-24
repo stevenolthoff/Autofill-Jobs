@@ -1,9 +1,6 @@
 <div align="center">
 
-
-https://github.com/user-attachments/assets/b9db3178-e449-4501-83b7-d98744a584cf
-
-
+https://github.com/user-attachments/assets/13f0fb66-7436-40ff-8faf-c2540084337b
 
 <h1 align="center">
   Autofill Jobs
