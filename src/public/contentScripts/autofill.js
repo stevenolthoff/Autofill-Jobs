@@ -98,6 +98,10 @@ async function awaitForm() {
     childList: true,
     subtree: true,
   });
+  if (window.location.hostname.includes("lever")) {
+    let form = document.querySelector("#application-form, #application_form");
+    if (form) autofill(form);
+  }
 }
 
 async function autofill(form) {
