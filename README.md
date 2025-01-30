@@ -47,7 +47,7 @@ npm run build
 
 # Then, navigate to chrome://extensions and load unpacked the dist folder.
 ```
-Or download it from the Chrome Web Store (coming soon)
+Or download it from the Chrome Web Store [here](https://chromewebstore.google.com/detail/autofill-jobs/mfnfecldidgkknamdfibcdnmcjlaogpc)
 
 ## License 📝
 
