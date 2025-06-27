@@ -53,3 +53,5 @@ Or download it from the Chrome Web Store [here](https://chromewebstore.google.co
 
 This project is using the MIT License. If you'd like to report an issue with the extension, please use the issues tab. If you enjoy using this extension, please feel free to leave a ⭐. 
 
+IMPORTANT: This project is not actively maintained at the moment.
+
