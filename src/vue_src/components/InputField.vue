@@ -1,25 +1,44 @@
 <template>
-  <div class="inputFieldDiv">
-    <h2 style="align-items: center; display: flex; gap:1rem;">{{ label }} <svg v-if="explanation"
-        @click="showExplanation" style='cursor: pointer;' xmlns="http://www.w3.org/2000/svg" height="24px"
-        viewBox="0 -960 960 960" width="24px" fill="#5f6368">
-        <path
-          d="M478-240q21 0 35.5-14.5T528-290q0-21-14.5-35.5T478-340q-21 0-35.5 14.5T428-290q0 21 14.5 35.5T478-240Zm-36-154h74q0-33 7.5-52t42.5-52q26-26 41-49.5t15-56.5q0-56-41-86t-97-30q-57 0-92.5 30T342-618l66 26q5-18 22.5-39t53.5-21q32 0 48 17.5t16 38.5q0 20-12 37.5T506-526q-44 39-54 59t-10 73Zm38 314q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z" />
-      </svg></h2>
+  <div class="grid grid-cols-3 items-center gap-4">
+    <label :for="label" class="text-sm font-medium text-muted-foreground text-right col-span-1">
+      {{ label }}
+      <button v-if="explanation" @click="showExplanation" class="inline-flex items-center justify-center align-middle h-4 w-4 rounded-full text-muted-foreground/80 hover:bg-muted ml-1">
+        ?
+      </button>
+    </label>
 
-    <input v-if="!dropDowns.includes(label) && !files.includes(label)" :type="hidden" :placeholder="placeHolder"
-      v-model="inputValue" @input="saveData" @focus="onFocus" @blur="onBlur" />
-    <div v-if="files.includes(label)" class="inputFieldfileHolder">
-      <input v-if="files.includes(label)" type="file" title="" value="" :placeholder="placeHolder"
-        @change="saveResume" />
-      <h2 v-if="files.includes(label)">{{ inputValue }}</h2>
-    </div>
+    <template v-if="!dropDowns.includes(label) && !files.includes(label)">
+      <input 
+        :id="label"
+        class="h-9 px-3 py-2 text-sm col-span-2 bg-transparent rounded-md border border-input ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        :type="hidden" 
+        :placeholder="placeHolder"
+        v-model="inputValue" 
+        @input="saveData" 
+        @focus="onFocus" 
+        @blur="onBlur" />
+    </template>
+    
+    <template v-if="files.includes(label)">
+      <div class="col-span-2">
+        <input type="file" :id="label + '-file'" class="sr-only" @change="saveResume" />
+        <label :for="label + '-file'" class="inline-flex items-center justify-center h-9 px-4 text-sm font-medium text-primary-foreground bg-primary rounded-md cursor-pointer hover:bg-primary/90">
+          Upload File
+        </label>
+        <span class="ml-3 text-sm text-muted-foreground truncate">{{ inputValue || 'No file selected' }}</span>
+      </div>
+    </template>
 
-    <select :class=hidden v-if="dropDowns.includes(label)" v-model="inputValue" @change="dropdownPrivacy">
-
-      <option v-for="option in placeHolder" :key="option" :value="option">{{ option }}</option>
-    </select>
-
+    <template v-if="dropDowns.includes(label)">
+      <select 
+        :id="label"
+        :class="hidden"
+        class="h-9 px-3 py-2 text-sm col-span-2 bg-transparent rounded-md border border-input ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        v-model="inputValue" 
+        @change="dropdownPrivacy">
+        <option v-for="option in placeHolder" :key="option" :value="option">{{ option }}</option>
+      </select>
+    </template>
   </div>
 </template>
 

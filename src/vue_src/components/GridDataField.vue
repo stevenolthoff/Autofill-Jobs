@@ -1,14 +1,11 @@
 <template>
-    <div class="gridFieldDivHolder">
-        <h2 style="align-items: center; display: flex; gap:1rem;">{{ label }}</h2>
-        <div class="gridFieldDiv">
-
+    <div class="grid grid-cols-3 items-start gap-4">
+        <h2 class="text-sm font-medium text-muted-foreground text-right pt-2 col-span-1">{{ label }}</h2>
+        <div class="flex flex-wrap gap-2 col-span-2">
             <GridDataItem v-for="option in dataRef" :key="option" :value="option" :content="option" :type="label">
             </GridDataItem>
             <GridDataItem :type="label" isLast=true updateData="loadData" />
         </div>
-
-
     </div>
 </template>
 

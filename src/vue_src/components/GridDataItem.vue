@@ -1,15 +1,16 @@
 <template>
-    <div class="gridDataItem">
-        <h1 v-if="content">{{ content }}</h1>
-        <svg v-if="!isLast" style='cursor: pointer;' @click="deleteSelf" xmlns="http://www.w3.org/2000/svg"
-            height="15px" viewBox="0 -960 960 960" width="15px" fill="rgba(255,255,255,0.4)">
-            <path
-                d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
-        </svg>
-        <svg v-if="isLast" style='cursor: pointer;' @click="toggleIsOn" xmlns="http://www.w3.org/2000/svg" height="22px"
-            viewBox="0 -960 960 960" width="22px" fill="rgba(255,255,255,0.8)">
-            <path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-        </svg>
+    <div class="flex items-center gap-1.5 bg-muted text-muted-foreground text-sm font-medium h-7 px-2.5 rounded-md">
+        <h1 v-if="content" class="font-normal">{{ content }}</h1>
+        <button v-if="!isLast" @click="deleteSelf" class="flex items-center justify-center w-4 h-4 rounded-full hover:bg-muted-foreground/20">
+            <svg xmlns="http://www.w3.org/2000/svg" height="12px" viewBox="0 -960 960 960" width="12px" fill="currentColor">
+                <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+            </svg>
+        </button>
+        <button v-if="isLast" @click="toggleIsOn" class="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
+             <svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor">
+                <path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+            </svg>
+        </button>
     </div>
 </template>
 
