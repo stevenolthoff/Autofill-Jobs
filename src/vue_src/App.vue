@@ -7,6 +7,7 @@ import PrivacyToggle from '@/components/PrivacyToggle.vue';
 import Explanation from '@/components/Explanation.vue';
 import EnterSkill from '@/components/EnterSkill.vue';
 import EnterWorkExperience from '@/components/EnterWorkExperience.vue';
+import SavedAnswers from '@/components/SavedAnswers.vue';
 </script>
 
 
@@ -128,6 +129,8 @@ import EnterWorkExperience from '@/components/EnterWorkExperience.vue';
         <InputField label="Disability Status"
           :placeHolder="['Yes, I have a disability, or have had one in the past', 'No, I do not have a disability and have not had one in the past', 'I do not want to answer']" />
       </section>
+
+      <SavedAnswers />
     </main>
   </div>
 </template>

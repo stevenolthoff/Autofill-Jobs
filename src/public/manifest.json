@@ -15,10 +15,10 @@
   "content_scripts": [
     {
       "js": [
-       
         "contentScripts/utils.js",
         "contentScripts/workday.js",
-        "contentScripts/autofill.js"
+        "contentScripts/autofill.js",
+        "contentScripts/semanticAutofill.js"
       ],
       "type": "module",
       "matches": [
@@ -31,6 +31,15 @@
       ],
       "world": "ISOLATED",
       "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "workers/embedding.worker.js",
+        "ort-wasm-simd-threaded.wasm"
+      ],
+      "matches": ["<all_urls>"]
     }
   ]
 }
