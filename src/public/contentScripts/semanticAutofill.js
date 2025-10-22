@@ -195,10 +195,21 @@ function suggestAnswer(input, answer) {
     }
 }
 
+// *** FIX: Replace the old listener with two delegated listeners ***
+
+// Use event delegation for both suggestion and capture. This is more performant and robust.
 document.addEventListener('focusin', (e) => {
+    // This runs when the user focuses ON any input on the page
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
         findAndSuggestAnswer(e);
-        e.target.addEventListener('blur', captureAnswer, { once: true });
+    }
+});
+
+document.addEventListener('focusout', (e) => {
+    // This runs when the user focuses OUT of any input on the page
+    // `focusout` is the bubbling version of `blur`
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        captureAnswer(e);
     }
 });
 
