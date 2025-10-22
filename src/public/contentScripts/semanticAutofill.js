@@ -37,8 +37,12 @@ self.addEventListener('message', async (event) => {
         });
     } else if (type === 'findSimilar') {
         const { queryEmbedding, savedAnswers } = payload;
+        console.log('🤖 Embedding Worker: findSimilar called');
+        console.log('🤖 Embedding Worker: queryEmbedding type:', typeof queryEmbedding, 'length:', queryEmbedding?.length);
+        console.log('🤖 Embedding Worker: savedAnswers:', savedAnswers);
         
         if (!queryEmbedding || savedAnswers.length === 0) {
+            console.log('🤖 Embedding Worker: No query embedding or saved answers');
             self.postMessage({ type: 'similarityResult', payload: null });
             return;
         }
@@ -49,16 +53,50 @@ self.addEventListener('message', async (event) => {
 
         // *** FIX: Convert plain arrays back to Float32Array before calculation ***
         const queryVector = new Float32Array(queryEmbedding);
+        console.log('🤖 Embedding Worker: Query vector length:', queryVector.length);
+        console.log('🤖 Embedding Worker: Saved answers count:', savedAnswers.length);
 
         for (const item of savedAnswers) {
+            console.log('🤖 Embedding Worker: Processing item:', item);
             if (item.embedding) {
-                const savedVector = new Float32Array(item.embedding);
-                const similarity = cos_sim(queryVector, savedVector);
+                console.log('🤖 Embedding Worker: Processing saved answer:', item.question);
+                console.log('🤖 Embedding Worker: Saved embedding type:', typeof item.embedding);
+                console.log('🤖 Embedding Worker: Saved embedding is array:', Array.isArray(item.embedding));
+                console.log('🤖 Embedding Worker: Saved embedding keys:', Object.keys(item.embedding));
                 
-                if (similarity > highestSimilarity) {
-                    highestSimilarity = similarity;
-                    bestMatch = item;
+                let embeddingArray;
+                
+                if (Array.isArray(item.embedding)) {
+                    // Already an array
+                    embeddingArray = item.embedding;
+                } else if (item.embedding.data && Array.isArray(item.embedding.data)) {
+                    // It's a tensor-like object with .data property
+                    embeddingArray = item.embedding.data;
+                } else if (typeof item.embedding === 'object') {
+                    // Try to convert object to array
+                    embeddingArray = Object.values(item.embedding);
+                } else {
+                    console.log('🤖 Embedding Worker: Unknown embedding format, skipping');
+                    continue;
                 }
+                
+                console.log('🤖 Embedding Worker: Converted embedding length:', embeddingArray.length);
+                console.log('🤖 Embedding Worker: First few values:', embeddingArray.slice(0, 5));
+                
+                if (embeddingArray.length > 0) {
+                    const savedVector = new Float32Array(embeddingArray);
+                    const similarity = cos_sim(queryVector, savedVector);
+                    console.log('🤖 Embedding Worker: Similarity calculated:', similarity);
+                    
+                    if (similarity > highestSimilarity) {
+                        highestSimilarity = similarity;
+                        bestMatch = item;
+                    }
+                } else {
+                    console.log('🤖 Embedding Worker: Empty embedding array, skipping');
+                }
+            } else {
+                console.log('🤖 Embedding Worker: Skipping item with no embedding:', item.question);
             }
         }
         
@@ -85,6 +123,12 @@ worker.onmessage = async (event) => {
     const { type, payload } = event.data;
     if (type === 'embeddingComplete') {
         const { id, embedding } = payload;
+        console.log('📨 Semantic Autofill: Embedding completed for ID:', id);
+        console.log('📨 Semantic Autofill: Embedding type:', typeof embedding);
+        console.log('📨 Semantic Autofill: Embedding is array:', Array.isArray(embedding));
+        console.log('📨 Semantic Autofill: Embedding length:', embedding?.length);
+        console.log('📨 Semantic Autofill: First few values:', embedding?.slice(0, 5));
+        
         if (pendingEmbeddings.has(id)) {
             const { question, answer, sourceUrl } = pendingEmbeddings.get(id);
             const savedAnswers = await getSavedAnswers();
@@ -96,6 +140,7 @@ worker.onmessage = async (event) => {
                 embedding,
                 timestamp: new Date().toISOString(),
             };
+            console.log('💾 Semantic Autofill: Saving new answer with embedding:', newAnswer);
             await chrome.storage.local.set({ saved_answers: [...savedAnswers, newAnswer] });
             console.log('✅ Semantic Autofill: Successfully saved new Q&A:', newAnswer);
             pendingEmbeddings.delete(id);
@@ -134,6 +179,14 @@ function getQuestionForInput(input) {
 
 function captureAnswer(event) {
     const input = event.target;
+
+    // *** FIX: Check if the input was autofilled. If so, don't save it again. ***
+    if (input.getAttribute('data-autofilled') === 'true') {
+        input.removeAttribute('data-autofilled'); // Clean up the tag for future interactions
+        console.log('📝 Semantic Autofill: Skipping save for autofilled answer.');
+        return;
+    }
+
     if (!input.value || input.value.length < 2) return;
     const question = getQuestionForInput(input);
     if (question && question.length > 5) {
@@ -182,12 +235,22 @@ function suggestAnswer(input, answer) {
     if (!input.value || input.value.trim().length < 3) {
         input.value = answer;
         input.style.backgroundColor = '#fef3c7'; // yellow-100
+        
+        // *** FIX: Tag the input as autofilled ***
+        input.setAttribute('data-autofilled', 'true');
+
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
         
-        input.addEventListener('input', () => {
+        const cleanup = () => {
             input.style.backgroundColor = '';
-        }, { once: true });
+            // If the user edits the suggestion, remove the tag so it can be saved.
+            if (input.getAttribute('data-autofilled')) {
+                input.removeAttribute('data-autofilled');
+            }
+        };
+
+        input.addEventListener('input', cleanup, { once: true });
         
         console.log('✅ Semantic Autofill: Answer field populated.');
     } else {
