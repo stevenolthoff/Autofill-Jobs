@@ -49,7 +49,7 @@ self.addEventListener('message', async (event) => {
 
         let bestMatch = null;
         let highestSimilarity = -1;
-        const SIMILARITY_THRESHOLD = 0.80; 
+        const SIMILARITY_THRESHOLD = 0.70; // Lowered from 0.80 to be more lenient 
 
         // *** FIX: Convert plain arrays back to Float32Array before calculation ***
         const queryVector = new Float32Array(queryEmbedding);
