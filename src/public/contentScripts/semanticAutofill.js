@@ -432,16 +432,28 @@ function getQuestionForInput(input) {
         return null;
     }
     
-    // Original logic for text inputs
+    // Original logic for text inputs and textareas
     let label = document.querySelector(`label[for="${input.id}"]`);
-    if (label && label.textContent) return label.textContent.trim();
+    if (label && label.textContent) {
+        const labelText = label.textContent.trim();
+        // Make sure we get meaningful text, not just whitespace
+        if (labelText.length > 2) {
+            console.log('🔍 Found label text for', input.tagName, input.id, ':', labelText);
+            return labelText;
+        }
+    }
     if (input.placeholder) return input.placeholder;
     if (input.ariaLabel) return input.ariaLabel;
     
     let parent = input.parentElement;
     for (let i = 0; i < 3 && parent; i++) {
         const textElement = parent.querySelector('.text, .title, .label');
-        if (textElement && textElement.textContent) return textElement.textContent.trim();
+        if (textElement && textElement.textContent) {
+            const text = textElement.textContent.trim();
+            if (text.length > 2) {
+                return text;
+            }
+        }
         parent = parent.parentElement;
     }
     
@@ -542,6 +554,11 @@ async function findAndSuggestAnswer(event) {
     // Do not show suggestion popups for radio buttons or checkboxes
     if (input.type === 'radio' || input.type === 'checkbox') {
         return;
+    }
+    
+    // Add debugging for textarea elements
+    if (input.tagName === 'TEXTAREA') {
+        console.log('🔍 TEXTAREA focused:', input.id, input.name, input.placeholder);
     }
     
     if (isSelectingSuggestion) return;
@@ -714,11 +731,16 @@ async function scanAndAutofillPage() {
     if (allQuestions.length === 0) return;
 
     // A wider selector to catch more question containers
-    const questionElements = Array.from(document.querySelectorAll('.application-question, .form-group, .form-field'));
+    const questionElements = Array.from(document.querySelectorAll('.application-question, .form-group, .form-field, .section.page-centered.application-form, .application-additional'));
     
     const autofillPromises = questionElements.map(async (el) => {
         const input = el.querySelector('input[type="text"], textarea, input[type="radio"], input[type="checkbox"]');
         if (!input) return;
+        
+        // Add debugging for textarea elements
+        if (input.tagName === 'TEXTAREA') {
+            console.log('🔍 Found textarea in scan:', input.id, input.name, input.placeholder);
+        }
 
         // Skip fields that are already filled
         if (input.type !== 'radio' && input.type !== 'checkbox' && input.value) return;
@@ -855,7 +877,7 @@ function suggestCheckboxAnswer(checkboxInput, match) {
 // *** Trigger for Proactive Page Scan ***
 let scanHasRun = false;
 const formObserver = new MutationObserver((mutations, observer) => {
-    const applicationForm = document.querySelector('.application-form, #application-form, #mainContent form');
+    const applicationForm = document.querySelector('.application-form, #application-form, #mainContent form, .section.page-centered.application-form');
     console.log('🔍 Form observer checking for forms, found:', applicationForm ? 'yes' : 'no');
     if (applicationForm && !scanHasRun) {
         console.log('🔍 Application form detected, starting scan in 1 second');
