@@ -43,18 +43,15 @@ self.addEventListener('message', async (event) => {
         
         if (!queryEmbedding || savedAnswers.length === 0) {
             console.log('🤖 Embedding Worker: No query embedding or saved answers');
-            self.postMessage({ type: 'similarityResult', payload: null });
+            self.postMessage({ type: 'similarityResult', payload: [] });
             return;
         }
 
-        let bestMatch = null;
-        let highestSimilarity = -1;
-        const SIMILARITY_THRESHOLD = 0.70; // Lowered from 0.80 to be more lenient 
-
-        // *** FIX: Convert plain arrays back to Float32Array before calculation ***
         const queryVector = new Float32Array(queryEmbedding);
         console.log('🤖 Embedding Worker: Query vector length:', queryVector.length);
         console.log('🤖 Embedding Worker: Saved answers count:', savedAnswers.length);
+
+        let matches = [];
 
         for (const item of savedAnswers) {
             console.log('🤖 Embedding Worker: Processing item:', item);
@@ -88,10 +85,8 @@ self.addEventListener('message', async (event) => {
                     const similarity = cos_sim(queryVector, savedVector);
                     console.log('🤖 Embedding Worker: Similarity calculated:', similarity);
                     
-                    if (similarity > highestSimilarity) {
-                        highestSimilarity = similarity;
-                        bestMatch = item;
-                    }
+                    // Show all matches regardless of similarity threshold
+                    matches.push({ ...item, similarity });
                 } else {
                     console.log('🤖 Embedding Worker: Empty embedding array, skipping');
                 }
@@ -100,13 +95,10 @@ self.addEventListener('message', async (event) => {
             }
         }
         
-        console.log(\`🤖 Embedding Worker: Highest similarity found: \${highestSimilarity}\`);
-
-        if (highestSimilarity >= SIMILARITY_THRESHOLD) {
-            self.postMessage({ type: 'similarityResult', payload: { ...bestMatch, similarity: highestSimilarity } });
-        } else {
-            self.postMessage({ type: 'similarityResult', payload: null });
-        }
+        // Sort by similarity descending and take top 5
+        matches.sort((a, b) => b.similarity - a.similarity);
+        console.log(\`🤖 Embedding Worker: Found \${matches.length} total matches\`);
+        self.postMessage({ type: 'similarityResult', payload: matches.slice(0, 5) });
     }
 });
 `;
@@ -117,6 +109,109 @@ const worker = new Worker(workerUrl, { type: 'module' });
 const pendingEmbeddings = new Map();
 
 console.log('🤖 Semantic Autofill: Worker created');
+
+let suggestionPopup = null;
+let currentTargetInput = null;
+
+function createSuggestionPopup() {
+    if (suggestionPopup) return;
+
+    suggestionPopup = document.createElement('div');
+    suggestionPopup.id = 'autofill-suggestion-popup';
+    Object.assign(suggestionPopup.style, {
+        position: 'absolute',
+        zIndex: '2147483647',
+        background: 'white',
+        border: '1px solid #e2e8f0',
+        borderRadius: '0.5rem',
+        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        display: 'none',
+        maxHeight: '200px',
+        overflowY: 'auto',
+        fontFamily: `system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif`,
+        fontSize: '14px',
+    });
+    document.body.appendChild(suggestionPopup);
+
+    document.addEventListener('mousedown', (e) => {
+        if (suggestionPopup.style.display === 'block' && !suggestionPopup.contains(e.target) && e.target !== currentTargetInput) {
+            hideSuggestionPopup();
+        }
+    });
+}
+
+function hideSuggestionPopup() {
+    if (suggestionPopup) {
+        suggestionPopup.style.display = 'none';
+        suggestionPopup.innerHTML = '';
+    }
+}
+
+function showSuggestionPopup(suggestions, inputElement) {
+    createSuggestionPopup();
+    
+    // Clear previous suggestions
+    suggestionPopup.innerHTML = '';
+
+    if (suggestions.length === 0) {
+        hideSuggestionPopup();
+        return;
+    }
+
+    suggestions.forEach(suggestion => {
+        const item = document.createElement('button');
+        Object.assign(item.style, {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            padding: '8px 12px',
+            textAlign: 'left',
+            border: 'none',
+            borderBottom: '1px solid #edf2f7',
+            cursor: 'pointer',
+            background: 'white',
+        });
+        item.onmouseover = () => item.style.backgroundColor = '#f7fafc';
+        item.onmouseout = () => item.style.backgroundColor = 'white';
+        
+        const answerText = document.createElement('span');
+        answerText.textContent = suggestion.answer.substring(0, 60) + (suggestion.answer.length > 60 ? '...' : '');
+        answerText.style.marginRight = '16px';
+        answerText.style.color = '#4a5568';
+        
+        const score = document.createElement('span');
+        score.textContent = `${(suggestion.similarity * 100).toFixed(0)}%`;
+        score.style.fontWeight = '600';
+        score.style.whiteSpace = 'nowrap';
+        
+        // Color code similarity scores: green for high, yellow for medium, red for low
+        if (suggestion.similarity >= 0.7) {
+            score.style.color = '#059669'; // green-600
+        } else if (suggestion.similarity >= 0.5) {
+            score.style.color = '#d97706'; // amber-600
+        } else {
+            score.style.color = '#dc2626'; // red-600
+        }
+
+        item.appendChild(answerText);
+        item.appendChild(score);
+        
+        item.addEventListener('click', () => {
+            inputElement.setAttribute('data-suggested-cluster-id', suggestion.clusterId);
+            suggestAnswer(inputElement, suggestion.answer);
+            hideSuggestionPopup();
+        });
+
+        suggestionPopup.appendChild(item);
+    });
+
+    const rect = inputElement.getBoundingClientRect();
+    suggestionPopup.style.left = `${rect.left + window.scrollX}px`;
+    suggestionPopup.style.top = `${rect.bottom + window.scrollY + 2}px`;
+    suggestionPopup.style.minWidth = `${rect.width}px`;
+    suggestionPopup.style.display = 'block';
+}
 
 // Listen for completed embeddings from the worker
 worker.onmessage = async (event) => {
@@ -163,10 +258,12 @@ worker.onmessage = async (event) => {
             pendingEmbeddings.delete(id);
         }
     } else if (type === 'similarityResult') {
-        if (payload && currentFocusedElement) {
-            console.log(`✅ Semantic Autofill: Match found with similarity ${payload.similarity.toFixed(4)}. Suggesting answer: "${payload.answer}"`);
-            suggestAnswer(currentFocusedElement, payload.answer);
+        const results = payload;
+        if (results && results.length > 0 && currentFocusedElement) {
+            console.log(`✅ Semantic Autofill: Found ${results.length} potential matches.`);
+            showSuggestionPopup(results, currentFocusedElement);
         } else {
+            hideSuggestionPopup();
             console.log('❌ Semantic Autofill: No sufficiently similar answer found in the database.');
         }
     }
@@ -247,7 +344,12 @@ let currentFocusedElement = null;
 
 async function findAndSuggestAnswer(event) {
     const input = event.target;
+    // Hide any previous popup when focusing a new field
+    if (input !== currentFocusedElement && suggestionPopup) {
+        hideSuggestionPopup();
+    }
     currentFocusedElement = input;
+    currentTargetInput = input;
     const question = getQuestionForInput(input);
     
     if (question && question.length > 5) {
@@ -270,13 +372,12 @@ async function findAndSuggestAnswer(event) {
                 if (e.data.type === 'embeddingComplete' && e.data.payload.id === 'query_lookup') {
                     tempWorker.postMessage({ type: 'findSimilar', payload: { queryEmbedding: e.data.payload.embedding, savedAnswers: allQuestions }});
                 } else if (e.data.type === 'similarityResult') {
-                    const bestMatch = e.data.payload;
-                    if (bestMatch && currentFocusedElement) {
-                        console.log(`✅ Semantic Autofill: Match found with similarity ${bestMatch.similarity.toFixed(4)}. Suggesting answer: "${bestMatch.answer}"`);
-                        // Store suggestion info on the element for captureAnswer to use
-                        currentFocusedElement.setAttribute('data-suggested-cluster-id', bestMatch.clusterId);
-                        suggestAnswer(currentFocusedElement, bestMatch.answer);
+                    const bestMatches = e.data.payload; // Now an array
+                    if (bestMatches && bestMatches.length > 0 && currentFocusedElement) {
+                        console.log(`✅ Semantic Autofill: Found ${bestMatches.length} potential answers.`);
+                        showSuggestionPopup(bestMatches, currentFocusedElement);
                     } else {
+                         hideSuggestionPopup();
                          console.log('❌ Semantic Autofill: No sufficiently similar answer found in the database.');
                     }
                     tempWorker.terminate();
