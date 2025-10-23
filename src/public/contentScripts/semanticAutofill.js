@@ -124,6 +124,8 @@ console.log('🤖 Semantic Autofill: Worker created');
 
 let suggestionPopup = null;
 let currentTargetInput = null;
+let isSelectingSuggestion = false;
+let dismissedByClickOutside = false;
 
 function createSuggestionPopup() {
     if (suggestionPopup) return;
@@ -148,6 +150,10 @@ function createSuggestionPopup() {
     document.addEventListener('mousedown', (e) => {
         if (suggestionPopup.style.display === 'block' && !suggestionPopup.contains(e.target) && e.target !== currentTargetInput) {
             hideSuggestionPopup();
+            // Mark that we're not selecting a suggestion to prevent popup from showing again
+            isSelectingSuggestion = false;
+            // Mark that popup was dismissed by clicking outside
+            dismissedByClickOutside = true;
         }
     });
 }
@@ -221,12 +227,20 @@ function showSuggestionPopup(suggestions, inputElement) {
         item.appendChild(score);
         
         item.addEventListener('click', () => {
+            // Mark that we're selecting a suggestion to prevent popup from showing again
+            isSelectingSuggestion = true;
+            
             // Only set cluster ID if the field doesn't already contain this exact answer
             if (inputElement.value.trim() !== suggestion.answer.trim()) {
                 inputElement.setAttribute('data-suggested-cluster-id', suggestion.clusterId);
             }
             suggestAnswer(inputElement, suggestion.answer);
             hideSuggestionPopup();
+            
+            // Reset the flag after a short delay to allow normal popup behavior for future interactions
+            setTimeout(() => {
+                isSelectingSuggestion = false;
+            }, 100);
         });
 
         suggestionPopup.appendChild(item);
@@ -419,10 +433,27 @@ let currentFocusedElement = null;
 
 async function findAndSuggestAnswer(event) {
     const input = event.target;
+    
+    // Don't show popup if we just selected a suggestion
+    if (isSelectingSuggestion) {
+        return;
+    }
+    
+    // Don't show popup if it was dismissed by clicking outside
+    if (dismissedByClickOutside && input === currentTargetInput) {
+        return;
+    }
+    
     // Hide any previous popup when focusing a new field
     if (input !== currentFocusedElement && suggestionPopup) {
         hideSuggestionPopup();
     }
+    
+    // Reset dismissal flag when focusing on a different field
+    if (input !== currentTargetInput) {
+        dismissedByClickOutside = false;
+    }
+    
     currentFocusedElement = input;
     currentTargetInput = input;
     const question = getQuestionForInput(input);
@@ -507,6 +538,13 @@ document.addEventListener('focusout', (e) => {
     // `focusout` is the bubbling version of `blur`
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
         captureAnswer(e);
+    }
+});
+
+// Reset dismissal flag when user starts typing
+document.addEventListener('input', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        dismissedByClickOutside = false;
     }
 });
 
