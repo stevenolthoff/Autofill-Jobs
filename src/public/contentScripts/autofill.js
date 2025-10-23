@@ -7,7 +7,6 @@ import {
   inputEvent,
   sleep,
   curDateStr,
-  scrollToTop,
   base64ToArrayBuffer,
   monthToNumber,
   getTimeElapsed,
@@ -173,7 +172,6 @@ async function autofill(form) {
       btn.dispatchEvent(keyDownEvent);
       await sleep(delays.short);
     }
-    scrollToTop();
     console.log(`Autofill Jobs: Complete in ${getTimeElapsed(initTime)}s.`);
     break; //found site
   }
