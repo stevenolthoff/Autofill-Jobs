@@ -188,11 +188,20 @@ function showSuggestionPopup(suggestions, inputElement) {
         item.onmouseout = () => item.style.backgroundColor = 'white';
         
         const answerText = document.createElement('span');
-        answerText.textContent = suggestion.answer.substring(0, 120) + (suggestion.answer.length > 120 ? '...' : '');
+        
+        // Truncate to approximately 3 lines of text
+        const maxChars = Math.min(suggestion.answer.length, 300);
+        const truncatedAnswer = suggestion.answer.substring(0, maxChars);
+        const finalAnswer = truncatedAnswer.length < suggestion.answer.length ? truncatedAnswer + '...' : truncatedAnswer;
+        
+        answerText.textContent = finalAnswer;
         answerText.style.marginRight = '16px';
         answerText.style.color = '#4a5568';
         answerText.style.flex = '1';
         answerText.style.minWidth = '0';
+        answerText.style.lineHeight = '1.4';
+        answerText.style.whiteSpace = 'pre-wrap';
+        answerText.style.wordWrap = 'break-word';
         
         const score = document.createElement('span');
         score.textContent = `${(suggestion.similarity * 100).toFixed(0)}%`;
@@ -258,20 +267,44 @@ worker.onmessage = async (event) => {
                     await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
                 }
             } else {
-                // Create a new answer cluster
-                const newCluster = {
-                    id: self.crypto.randomUUID(),
-                    answer,
-                    questions: [{
+                // Check if this exact answer already exists
+                const answerKey = answer.trim().toLowerCase();
+                const existingCluster = savedAnswerClusters.find(cluster => 
+                    cluster.answer.trim().toLowerCase() === answerKey
+                );
+                
+                if (existingCluster) {
+                    // Answer already exists, add this question to the existing cluster
+                    console.log('💾 Semantic Autofill: Answer already exists, adding question to existing cluster');
+                    const newQuestionVariant = {
                         id: self.crypto.randomUUID(),
                         question,
                         sourceUrl,
                         embedding,
                         timestamp: new Date().toISOString(),
-                    }],
-                };
-                console.log('💾 Semantic Autofill: Saving new answer cluster:', newCluster);
-                await chrome.storage.local.set({ saved_answers: [...savedAnswerClusters, newCluster] });
+                    };
+                    
+                    const clusterIndex = savedAnswerClusters.findIndex(c => c.id === existingCluster.id);
+                    if (clusterIndex > -1) {
+                        savedAnswerClusters[clusterIndex].questions.push(newQuestionVariant);
+                        await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
+                    }
+                } else {
+                    // Create a new answer cluster
+                    const newCluster = {
+                        id: self.crypto.randomUUID(),
+                        answer,
+                        questions: [{
+                            id: self.crypto.randomUUID(),
+                            question,
+                            sourceUrl,
+                            embedding,
+                            timestamp: new Date().toISOString(),
+                        }],
+                    };
+                    console.log('💾 Semantic Autofill: Saving new answer cluster:', newCluster);
+                    await chrome.storage.local.set({ saved_answers: [...savedAnswerClusters, newCluster] });
+                }
             }
             pendingEmbeddings.delete(id);
         }
