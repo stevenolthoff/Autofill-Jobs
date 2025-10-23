@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 //Component imports
 import InputField from '@/components/InputField.vue';
 import GridDataField from '@/components/GridDataField.vue';
@@ -30,6 +30,22 @@ function showMain() {
   currentView.value = 'main';
   editingExperienceIndex.value = null;
 }
+
+// Check for draft data on mount and restore view if needed
+onMounted(() => {
+  if (chrome.storage) {
+    chrome.storage.local.get(['work_experience_draft', 'skill_draft'], (data) => {
+      if (data['work_experience_draft']) {
+        // If there's a work experience draft, restore the work experience form
+        currentView.value = 'addWorkExperience';
+        editingExperienceIndex.value = null;
+      } else if (data['skill_draft']) {
+        // If there's a skill draft, restore the skill form
+        currentView.value = 'addSkill';
+      }
+    });
+  }
+});
 </script>
 
 

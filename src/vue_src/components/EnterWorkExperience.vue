@@ -115,21 +115,58 @@ export default {
                     }
                 });
             } else {
-                // Clear form when not editing
-                jobTitle.value = '';
-                jobEmployer.value = '';
-                startMonth.value = '';
-                startYear.value = '';
-                endMonth.value = '';
-                endYear.value = '';
-                roleDescription.value = '';
+                // Check for draft data when creating new experience
+                chrome.storage.local.get('work_experience_draft', (data) => {
+                    const draft = data['work_experience_draft'];
+                    if (draft) {
+                        jobTitle.value = draft.jobTitle || '';
+                        jobEmployer.value = draft.jobEmployer || '';
+                        startMonth.value = draft.startMonth || '';
+                        startYear.value = draft.startYear || '';
+                        endMonth.value = draft.endMonth || '';
+                        endYear.value = draft.endYear || '';
+                        roleDescription.value = draft.roleDescription || '';
+                    } else {
+                        // Clear form when no draft exists
+                        jobTitle.value = '';
+                        jobEmployer.value = '';
+                        startMonth.value = '';
+                        startYear.value = '';
+                        endMonth.value = '';
+                        endYear.value = '';
+                        roleDescription.value = '';
+                    }
+                });
             }
         };
 
         // Watch for changes in experienceIndex
         watch(() => props.experienceIndex, loadExperienceData, { immediate: true });
 
+        // Auto-save draft when form data changes (only for new experiences)
+        const saveDraft = () => {
+            if (!isEditing.value && chrome.storage) {
+                const draft = {
+                    jobTitle: jobTitle.value,
+                    jobEmployer: jobEmployer.value,
+                    startMonth: startMonth.value,
+                    startYear: startYear.value,
+                    endMonth: endMonth.value,
+                    endYear: endYear.value,
+                    roleDescription: roleDescription.value
+                };
+                chrome.storage.local.set({ 'work_experience_draft': draft });
+            }
+        };
+
+        // Watch all form fields for changes and auto-save
+        watch([jobTitle, jobEmployer, startMonth, startYear, endMonth, endYear, roleDescription], saveDraft);
+
         const exit = () => {
+            // Clear draft when canceling
+            if (!isEditing.value && chrome.storage) {
+                chrome.storage.local.remove('work_experience_draft');
+            }
             emit('close');
         }
 
@@ -161,6 +198,10 @@ export default {
 
                 chrome.storage.local.set({ 'Resume_details': updatedDetails }, () => {
                     console.log(`'Resume_details' updated:`, updatedDetails);
+                    // Clear draft when successfully saving
+                    if (!isEditing.value) {
+                        chrome.storage.local.remove('work_experience_draft');
+                    }
                     loadDetails();
                     emit('close');
                 });

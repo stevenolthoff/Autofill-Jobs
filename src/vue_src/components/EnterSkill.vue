@@ -19,7 +19,7 @@
 </template>
 
 <script lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useResumeDetails } from '@/composables/ResumeDetails';
 export default {
     emits: ['close'],
@@ -27,7 +27,31 @@ export default {
         const { loadDetails } = useResumeDetails();
         const inputValue = ref('');
 
+        // Load draft data on mount
+        onMounted(() => {
+            if (chrome.storage) {
+                chrome.storage.local.get('skill_draft', (data) => {
+                    if (data['skill_draft']) {
+                        inputValue.value = data['skill_draft'];
+                    }
+                });
+            }
+        });
+
+        // Auto-save draft when input changes
+        const saveDraft = () => {
+            if (chrome.storage) {
+                chrome.storage.local.set({ 'skill_draft': inputValue.value });
+            }
+        };
+
+        watch(inputValue, saveDraft);
+
         const exit = () => {
+            // Clear draft when canceling
+            if (chrome.storage) {
+                chrome.storage.local.remove('skill_draft');
+            }
             inputValue.value = '';
             emit('close');
         }
@@ -49,6 +73,8 @@ export default {
                     
                     chrome.storage.local.set({ 'Resume_details': updatedDetails }, () => {
                         console.log(`'Resume_details' updated:`, updatedDetails);
+                        // Clear draft when successfully saving
+                        chrome.storage.local.remove('skill_draft');
                         loadDetails();
                         emit('close');
                     });
