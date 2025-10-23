@@ -536,23 +536,19 @@ let currentFocusedElement = null;
 
 async function findAndSuggestAnswer(event) {
     const input = event.target;
-    
-    // Don't show popup if we just selected a suggestion
-    if (isSelectingSuggestion) {
+
+    // Do not show suggestion popups for radio buttons
+    if (input.type === 'radio') {
         return;
     }
     
-    // Don't show popup if it was dismissed by clicking outside
-    if (dismissedByClickOutside && input === currentTargetInput) {
-        return;
-    }
+    if (isSelectingSuggestion) return;
+    if (dismissedByClickOutside && input === currentTargetInput) return;
     
-    // Hide any previous popup when focusing a new field
     if (input !== currentFocusedElement && suggestionPopup) {
         hideSuggestionPopup();
     }
     
-    // Reset dismissal flag when focusing on a different field
     if (input !== currentTargetInput) {
         dismissedByClickOutside = false;
     }
@@ -562,37 +558,27 @@ async function findAndSuggestAnswer(event) {
     const question = getQuestionForInput(input);
     
     if (question && question.length > 5) {
-        const savedAnswerClusters = await getSavedAnswers(); // This now returns AnswerCluster[]
+        const savedAnswerClusters = await getSavedAnswers();
         if (savedAnswerClusters.length > 0) {
-            // Flatten clusters into a list of questions for the worker
             const allQuestions = savedAnswerClusters.flatMap(cluster => {
-                // Ensure questions is an array
                 const questions = Array.isArray(cluster.questions) ? cluster.questions : [];
                 return questions.map(q => ({
-                    ...q, // id, question, sourceUrl, embedding, timestamp
-                    answer: cluster.answer, // Add answer for suggestion
-                    clusterId: cluster.id, // Keep track of origin cluster
+                    ...q,
+                    answer: cluster.answer,
+                    clusterId: cluster.id,
                 }));
             });
 
             if (allQuestions.length === 0) return;
 
-            const tempWorker = new Worker(workerUrl, { type: 'module' });
-            tempWorker.postMessage({type: 'generateEmbedding', payload: { id: 'query_lookup', text: question }});
-            tempWorker.onmessage = (e) => {
-                if (e.data.type === 'embeddingComplete' && e.data.payload.id === 'query_lookup') {
-                    tempWorker.postMessage({ type: 'findSimilar', payload: { queryEmbedding: e.data.payload.embedding, savedAnswers: allQuestions }});
-                } else if (e.data.type === 'similarityResult') {
-                    const bestMatches = e.data.payload; // Now an array
-                    if (bestMatches && bestMatches.length > 0 && currentFocusedElement) {
-                        console.log(`✅ Semantic Autofill: Found ${bestMatches.length} potential answers.`);
-                        showSuggestionPopup(bestMatches, currentFocusedElement);
-                    } else {
-                         hideSuggestionPopup();
-                         console.log('❌ Semantic Autofill: No sufficiently similar answer found in the database.');
-                    }
-                    tempWorker.terminate();
-                }
+            const bestMatches = await findSimilarAnswers(question, allQuestions);
+
+            if (bestMatches && bestMatches.length > 0 && currentFocusedElement) {
+                console.log(`✅ Semantic Autofill: Found ${bestMatches.length} potential answers.`);
+                showSuggestionPopup(bestMatches, currentFocusedElement);
+            } else {
+                 hideSuggestionPopup();
+                 console.log('❌ Semantic Autofill: No sufficiently similar answer found in the database.');
             }
         }
     }
@@ -674,6 +660,41 @@ worker.onerror = (error) => {
     console.error('💥 Semantic Autofill: Worker error:', error);
 };
 
+// A reusable function to find similar answers using a temporary worker
+function findSimilarAnswers(questionText, allSavedAnswers) {
+    return new Promise((resolve) => {
+        if (!allSavedAnswers || allSavedAnswers.length === 0) {
+            resolve([]);
+            return;
+        }
+
+        const tempWorker = new Worker(workerUrl, { type: 'module' });
+        const queryId = `query_${self.crypto.randomUUID()}`;
+
+        tempWorker.onmessage = (e) => {
+            const { type, payload } = e.data;
+            if (type === 'embeddingComplete' && payload.id === queryId) {
+                tempWorker.postMessage({ type: 'findSimilar', payload: { queryEmbedding: payload.embedding, savedAnswers: allSavedAnswers } });
+            } else if (type === 'similarityResult') {
+                resolve(payload); // payload is the array of matches
+                tempWorker.terminate();
+            } else if (type === 'error') {
+                console.error('💥 Semantic Autofill: Temp worker error:', payload);
+                resolve([]);
+                tempWorker.terminate();
+            }
+        };
+
+        tempWorker.onerror = (error) => {
+            console.error('💥 Semantic Autofill: Temp worker failed to start:', error);
+            resolve([]);
+            tempWorker.terminate();
+        };
+
+        tempWorker.postMessage({ type: 'generateEmbedding', payload: { id: queryId, text: questionText } });
+    });
+}
+
 // *** Proactive Autofill Scan for High-Confidence Matches ***
 
 const AUTOFILL_CONFIDENCE_THRESHOLD = 0.95; // Use a high threshold for proactive autofill
@@ -681,70 +702,45 @@ const AUTOFILL_CONFIDENCE_THRESHOLD = 0.95; // Use a high threshold for proactiv
 async function scanAndAutofillPage() {
     console.log('🔍 Semantic Autofill: Scanning page for high-confidence autofill opportunities.');
     const savedAnswerClusters = await getSavedAnswers();
-    console.log('🔍 Found saved clusters:', savedAnswerClusters.length);
     if (savedAnswerClusters.length === 0) return;
 
-    // Flatten clusters for the worker
     const allQuestions = savedAnswerClusters.flatMap(cluster => 
         (Array.isArray(cluster.questions) ? cluster.questions : []).map(q => ({
             ...q, answer: cluster.answer, clusterId: cluster.id,
         }))
     );
-    console.log('🔍 Flattened questions for scanning:', allQuestions.length);
     if (allQuestions.length === 0) return;
 
-    const questionElements = document.querySelectorAll('.application-question, .form-group');
-    console.log('🔍 Found question elements:', questionElements.length);
-
-    for (const el of questionElements) {
-        // Find the first input (text, textarea, or radio) to represent the question
+    // A wider selector to catch more question containers
+    const questionElements = Array.from(document.querySelectorAll('.application-question, .form-group, .form-field'));
+    
+    const autofillPromises = questionElements.map(async (el) => {
         const input = el.querySelector('input[type="text"], textarea, input[type="radio"]');
-        if (!input) continue;
+        if (!input) return;
 
-        console.log('🔍 Processing input:', input.type, input.name, input.value);
+        // Skip fields that are already filled
+        if (input.type !== 'radio' && input.value) return;
+        if (input.type === 'radio' && document.querySelector(`input[name="${input.name}"]:checked`)) return;
+
         const questionText = getQuestionForInput(input);
-        console.log('🔍 Question text extracted:', questionText);
-        if (!questionText || questionText.length <= 5) continue;
+        if (!questionText || questionText.length <= 5) return;
+
+        const bestMatches = await findSimilarAnswers(questionText, allQuestions);
+        const bestMatch = bestMatches?.[0];
         
-        // Use a temporary worker for each question lookup to avoid complexity
-        const tempWorker = new Worker(workerUrl, { type: 'module' });
-        tempWorker.postMessage({ type: 'generateEmbedding', payload: { id: 'scan_query', text: questionText } });
-        
-        tempWorker.onmessage = (e) => {
-            if (e.data.type === 'embeddingComplete') {
-                tempWorker.postMessage({ type: 'findSimilar', payload: { queryEmbedding: e.data.payload.embedding, savedAnswers: allQuestions } });
-            } else if (e.data.type === 'similarityResult') {
-                const bestMatch = e.data.payload?.[0];
-                console.log('🔍 Best match found:', bestMatch ? `${bestMatch.similarity} - ${bestMatch.answer}` : 'none');
-                
-                if (bestMatch && bestMatch.similarity >= AUTOFILL_CONFIDENCE_THRESHOLD) {
-                    console.log('🔍 High confidence match found, attempting autofill');
-                    if (input.type === 'radio') {
-                        // Ensure no radio button in this group is already checked by the user
-                        const groupName = input.name;
-                        if (groupName && !document.querySelector(`input[type="radio"][name="${groupName}"]:checked`)) {
-                            console.log('🔍 Auto-filling radio button group:', groupName);
-                            suggestRadioAnswer(input, bestMatch);
-                        } else {
-                            console.log('🔍 Radio group already has selection or no group name');
-                        }
-                    } else if (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA') {
-                        // Ensure we don't overwrite user input
-                        if (!input.value) {
-                            console.log('🔍 Auto-filling text input');
-                            suggestAnswer(input, bestMatch.answer);
-                            input.setAttribute('data-suggested-cluster-id', bestMatch.clusterId);
-                        } else {
-                            console.log('🔍 Text input already has value, skipping');
-                        }
-                    }
-                } else {
-                    console.log('🔍 Match confidence too low:', bestMatch ? bestMatch.similarity : 'no match');
-                }
-                tempWorker.terminate();
+        if (bestMatch && bestMatch.similarity >= AUTOFILL_CONFIDENCE_THRESHOLD) {
+            console.log(`✅ High confidence match found for "${questionText}", attempting autofill.`);
+            if (input.type === 'radio') {
+                suggestRadioAnswer(input, bestMatch);
+            } else if (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA') {
+                suggestAnswer(input, bestMatch.answer);
+                input.setAttribute('data-suggested-cluster-id', bestMatch.clusterId);
             }
-        };
-    }
+        }
+    });
+
+    await Promise.all(autofillPromises);
+    console.log('✅ Semantic Autofill: Page scan complete.');
 }
 
 function suggestRadioAnswer(radioInput, match) {
