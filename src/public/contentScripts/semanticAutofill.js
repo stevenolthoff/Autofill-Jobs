@@ -176,9 +176,11 @@ function showSuggestionPopup(suggestions, inputElement) {
         item.onmouseout = () => item.style.backgroundColor = 'white';
         
         const answerText = document.createElement('span');
-        answerText.textContent = suggestion.answer.substring(0, 60) + (suggestion.answer.length > 60 ? '...' : '');
+        answerText.textContent = suggestion.answer.substring(0, 120) + (suggestion.answer.length > 120 ? '...' : '');
         answerText.style.marginRight = '16px';
         answerText.style.color = '#4a5568';
+        answerText.style.flex = '1';
+        answerText.style.minWidth = '0';
         
         const score = document.createElement('span');
         score.textContent = `${(suggestion.similarity * 100).toFixed(0)}%`;
@@ -198,7 +200,10 @@ function showSuggestionPopup(suggestions, inputElement) {
         item.appendChild(score);
         
         item.addEventListener('click', () => {
-            inputElement.setAttribute('data-suggested-cluster-id', suggestion.clusterId);
+            // Only set cluster ID if the field doesn't already contain this exact answer
+            if (inputElement.value.trim() !== suggestion.answer.trim()) {
+                inputElement.setAttribute('data-suggested-cluster-id', suggestion.clusterId);
+            }
             suggestAnswer(inputElement, suggestion.answer);
             hideSuggestionPopup();
         });
@@ -209,7 +214,8 @@ function showSuggestionPopup(suggestions, inputElement) {
     const rect = inputElement.getBoundingClientRect();
     suggestionPopup.style.left = `${rect.left + window.scrollX}px`;
     suggestionPopup.style.top = `${rect.bottom + window.scrollY + 2}px`;
-    suggestionPopup.style.minWidth = `${rect.width}px`;
+    suggestionPopup.style.minWidth = `${Math.max(rect.width, 400)}px`;
+    suggestionPopup.style.maxWidth = '600px';
     suggestionPopup.style.display = 'block';
 }
 
