@@ -560,8 +560,8 @@ let currentFocusedElement = null;
 async function findAndSuggestAnswer(event) {
     const input = event.target;
 
-    // Do not show suggestion popups for radio buttons
-    if (input.type === 'radio') {
+    // Do not show suggestion popups for radio buttons or checkboxes
+    if (input.type === 'radio' || input.type === 'checkbox') {
         return;
     }
     
