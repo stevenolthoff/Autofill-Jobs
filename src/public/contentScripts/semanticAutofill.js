@@ -374,15 +374,15 @@ const getSavedAnswers = async () => {
 };
 
 function getQuestionForInput(input) {
-    // For radio buttons, we need to find the question text differently
-    if (input.type === 'radio') {
-        console.log('🔍 Getting question for radio button:', input.name);
-        console.log('🔍 Radio button DOM structure:');
+    // For radio buttons and checkboxes, we need to find the question text differently
+    if (input.type === 'radio' || input.type === 'checkbox') {
+        console.log('🔍 Getting question for', input.type, ':', input.name);
+        console.log('🔍 Input DOM structure:');
         console.log('  Input:', input.outerHTML);
         console.log('  Parent:', input.parentElement?.outerHTML);
         console.log('  Grandparent:', input.parentElement?.parentElement?.outerHTML);
         
-        // Look for common question text patterns around radio buttons
+        // Look for common question text patterns around radio buttons and checkboxes
         let parent = input.parentElement;
         for (let i = 0; i < 5 && parent; i++) {
             console.log('🔍 Checking parent level', i, ':', parent.tagName, parent.className, parent.id);
@@ -406,7 +406,7 @@ function getQuestionForInput(input) {
                 const questionElement = parent.querySelector(selector);
                 if (questionElement && questionElement.textContent) {
                     const text = questionElement.textContent.trim();
-                    // Make sure it's not just the radio button label
+                    // Make sure it's not just the input label
                     if (text.length > 5 && !text.includes(input.value) && text !== input.value) {
                         console.log('🔍 Found question text via selector', selector, ':', text);
                         return text;
@@ -417,7 +417,7 @@ function getQuestionForInput(input) {
             // Also check the parent's text content directly
             if (parent.textContent) {
                 const parentText = parent.textContent.trim();
-                // Look for text that's not the radio button value
+                // Look for text that's not the input value
                 const lines = parentText.split('\n').map(line => line.trim()).filter(line => line.length > 5);
                 for (const line of lines) {
                     if (!line.includes(input.value) && line !== input.value && !line.includes('U.S. Citizen') && !line.includes('Permanent Resident')) {
@@ -430,7 +430,7 @@ function getQuestionForInput(input) {
             parent = parent.parentElement;
         }
         
-        console.log('❌ No question text found for radio button');
+        console.log('❌ No question text found for', input.type);
         return null;
     }
     
@@ -456,13 +456,26 @@ async function captureAnswer(event) {
     
     console.log('💾 captureAnswer called for:', input.type, input.name, input.value);
     
-    // Handle radio buttons differently - get the label text instead of value
-    if (input.type === 'radio') {
+    // Handle radio buttons and checkboxes
+    if (input.type === 'checkbox') {
+        const groupName = input.name;
+        if (!groupName) return; // Cannot identify group
+        const checkedBoxes = document.querySelectorAll(`input[type="checkbox"][name="${groupName}"]:checked`);
+        
+        const answers = Array.from(checkedBoxes).map(cb => {
+            const label = document.querySelector(`label[for="${cb.id}"]`) || cb.closest('label');
+            // Use the visible label text as the answer, falling back to value
+            return label ? label.textContent.trim() : cb.value.trim();
+        });
+        
+        answer = answers.join(', '); // Join multiple answers into a single string
+        console.log('✅ Checkbox answer extracted:', answer);
+
+    } else if (input.type === 'radio') {
         const label = document.querySelector(`label[for="${input.id}"]`) || 
                      input.closest('label') || 
                      input.parentElement.querySelector('label');
         answer = label ? label.textContent.trim() : input.value.trim();
-        console.log('📻 Radio button label found:', label ? label.textContent.trim() : 'none');
         console.log('📻 Radio button answer extracted:', answer);
     } else {
         answer = input.value.trim();
@@ -642,10 +655,10 @@ document.addEventListener('focusout', (e) => {
     }
 });
 
-// Handle radio button changes (they don't trigger focus events)
+// Handle radio button and checkbox changes (they don't trigger focus events)
 document.addEventListener('change', (e) => {
-    if (e.target.type === 'radio') {
-        console.log('📻 Radio button changed:', e.target.name, e.target.value, e.target.checked);
+    if (e.target.type === 'radio' || e.target.type === 'checkbox') {
+        console.log(`📻 ${e.target.type} changed: ${e.target.name}`);
         captureAnswer(e);
     }
 });
@@ -725,12 +738,13 @@ async function scanAndAutofillPage() {
     const questionElements = Array.from(document.querySelectorAll('.application-question, .form-group, .form-field'));
     
     const autofillPromises = questionElements.map(async (el) => {
-        const input = el.querySelector('input[type="text"], textarea, input[type="radio"]');
+        const input = el.querySelector('input[type="text"], textarea, input[type="radio"], input[type="checkbox"]');
         if (!input) return;
 
         // Skip fields that are already filled
-        if (input.type !== 'radio' && input.value) return;
-        if (input.type === 'radio' && document.querySelector(`input[name="${input.name}"]:checked`)) return;
+        if (input.type !== 'radio' && input.type !== 'checkbox' && input.value) return;
+        if (input.type === 'radio' && document.querySelector(`input[type="radio"][name="${input.name}"]:checked`)) return;
+        if (input.type === 'checkbox' && document.querySelector(`input[type="checkbox"][name="${input.name}"]:checked`)) return;
 
         const questionText = getQuestionForInput(input);
         if (!questionText || questionText.length <= 5) return;
@@ -741,10 +755,23 @@ async function scanAndAutofillPage() {
         if (bestMatch && bestMatch.similarity >= AUTOFILL_CONFIDENCE_THRESHOLD) {
             console.log(`✅ High confidence match found for "${questionText}", attempting autofill.`);
             if (input.type === 'radio') {
-                suggestRadioAnswer(input, bestMatch);
+                // Ensure no radio button in this group is already checked
+                const groupName = input.name;
+                if (groupName && !document.querySelector(`input[type="radio"][name="${groupName}"]:checked`)) {
+                    suggestRadioAnswer(input, bestMatch);
+                }
+            } else if (input.type === 'checkbox') {
+                // Ensure no checkbox in this group is already checked by the user
+                const groupName = input.name;
+                if (groupName && !document.querySelector(`input[type="checkbox"][name="${groupName}"]:checked`)) {
+                    suggestCheckboxAnswer(input, bestMatch);
+                }
             } else if (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA') {
-                suggestAnswer(input, bestMatch.answer);
-                input.setAttribute('data-suggested-cluster-id', bestMatch.clusterId);
+                // Ensure we don't overwrite user input
+                if (!input.value) {
+                    suggestAnswer(input, bestMatch.answer);
+                    input.setAttribute('data-suggested-cluster-id', bestMatch.clusterId);
+                }
             }
         }
     });
@@ -807,6 +834,41 @@ function suggestRadioAnswer(radioInput, match) {
             }
         } else {
             console.log('📻 No label found for radio button');
+        }
+    }
+}
+
+function suggestCheckboxAnswer(checkboxInput, match) {
+    const groupName = checkboxInput.name;
+    if (!groupName) return;
+
+    const checkboxes = document.querySelectorAll(`input[type="checkbox"][name="${groupName}"]`);
+    if (checkboxes.length === 0) return;
+
+    // Normalize the saved answer into an array of lowercase strings
+    const answersToSelect = match.answer.toLowerCase().split(',').map(s => s.trim());
+    console.log(`✅ Attempting to select checkboxes for group ${groupName}:`, answersToSelect);
+
+    for (const checkbox of checkboxes) {
+        const label = document.querySelector(`label[for="${checkbox.id}"]`) || checkbox.closest('label');
+        if (!label) continue;
+
+        const labelText = label.textContent.toLowerCase().trim();
+        const checkboxValue = checkbox.value.toLowerCase().trim();
+
+        // Check if the label or value matches any of the desired answers
+        if (answersToSelect.some(ans => labelText.includes(ans) || checkboxValue.includes(ans))) {
+            console.log(`✅ Matching checkbox found: ${labelText}`);
+            if (!checkbox.checked) {
+                checkbox.checked = true;
+                checkbox.style.outline = '2px solid #fef3c7'; // yellow-100 highlight
+                checkbox.setAttribute('data-autofilled', 'true');
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                setTimeout(() => {
+                    checkbox.style.outline = '';
+                }, 2000);
+            }
         }
     }
 }
