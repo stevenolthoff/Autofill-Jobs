@@ -95,10 +95,22 @@ self.addEventListener('message', async (event) => {
             }
         }
         
-        // Sort by similarity descending and take top 5
+        // Sort by similarity descending
         matches.sort((a, b) => b.similarity - a.similarity);
-        console.log(\`🤖 Embedding Worker: Found \${matches.length} total matches\`);
-        self.postMessage({ type: 'similarityResult', payload: matches.slice(0, 5) });
+        
+        // Deduplicate by answer text, keeping the highest similarity score for each unique answer
+        const uniqueAnswers = new Map();
+        for (const match of matches) {
+            const answerKey = match.answer.trim().toLowerCase();
+            if (!uniqueAnswers.has(answerKey) || uniqueAnswers.get(answerKey).similarity < match.similarity) {
+                uniqueAnswers.set(answerKey, match);
+            }
+        }
+        
+        // Convert back to array and take top 5
+        const deduplicatedMatches = Array.from(uniqueAnswers.values()).slice(0, 5);
+        console.log(\`🤖 Embedding Worker: Found \${matches.length} total matches, \${deduplicatedMatches.length} unique answers\`);
+        self.postMessage({ type: 'similarityResult', payload: deduplicatedMatches });
     }
 });
 `;
