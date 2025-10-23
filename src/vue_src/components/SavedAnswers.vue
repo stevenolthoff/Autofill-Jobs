@@ -5,53 +5,50 @@
         <div v-if="savedAnswers.length === 0" class="text-sm text-muted-foreground text-center p-4">
             No answers saved yet. Start applying to build your database!
         </div>
-        <div v-for="item in savedAnswers" :key="item.id" class="p-3 bg-muted/50 rounded-md">
-            <p class="text-sm font-medium text-foreground truncate" :title="item.question">{{ item.question }}</p>
+        <div v-for="cluster in savedAnswers" :key="cluster.id" class="p-3 bg-muted/50 rounded-md">
             
             <!-- Answer display/edit area -->
-            <div class="mt-1">
+            <div>
               <textarea 
-                v-if="editingId === item.id"
+                v-if="editingId === cluster.id"
                 v-model="editingAnswer"
-                class="w-full text-sm text-muted-foreground bg-background p-2 rounded border resize-none"
+                class="w-full text-sm font-medium text-foreground bg-background p-2 rounded border resize-none"
                 rows="3"
-                @keydown.enter.prevent="saveEdit(item.id)"
+                @keydown.enter.prevent="saveEdit(cluster.id)"
                 @keydown.escape="cancelEdit"
                 ref="editTextarea"
               ></textarea>
               <p 
                 v-else 
-                class="text-sm text-muted-foreground bg-background p-2 rounded cursor-pointer hover:bg-muted/30 transition-colors" 
-                @click="startEdit(item.id, item.answer)"
-                :title="'Click to edit'"
-              >{{ item.answer }}</p>
+                class="text-sm font-medium text-foreground bg-background p-2 rounded cursor-pointer hover:bg-muted/30 transition-colors" 
+                @click="startEdit(cluster.id, cluster.answer)"
+                :title="'Click to edit canonical answer'"
+              >{{ cluster.answer }}</p>
             </div>
             
+            <!-- List of associated questions -->
+            <div class="mt-2 pl-4 border-l-2 border-muted" v-if="cluster.questions.length > 0">
+              <div v-for="q in cluster.questions" :key="q.id" class="text-sm text-muted-foreground py-1 flex justify-between items-center group">
+                <span class="truncate pr-2" :title="q.question">{{ q.question }}</span>
+                <button @click="deleteQuestionVariant(cluster.id, q.id)" class="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs pr-1 flex-shrink-0">delete</button>
+              </div>
+            </div>
+
             <div class="flex justify-between items-center mt-2">
-                <p class="text-xs text-muted-foreground/80">{{ new Date(item.timestamp).toLocaleDateString() }}</p>
-                <div class="flex gap-2">
+                <p class="text-xs text-muted-foreground/80">{{ cluster.questions.length }} question(s)</p>
+                <div class="flex gap-2 items-center">
                   <button 
-                    v-if="editingId !== item.id"
-                    @click="startEdit(item.id, item.answer)" 
+                    v-if="editingId !== cluster.id"
+                    @click="startEdit(cluster.id, cluster.answer)" 
                     class="text-xs text-blue-500 hover:underline"
                   >
-                    Edit
+                    Edit Answer
                   </button>
-                  <button 
-                    v-if="editingId === item.id"
-                    @click="saveEdit(item.id)" 
-                    class="text-xs text-green-500 hover:underline"
-                  >
-                    Save
-                  </button>
-                  <button 
-                    v-if="editingId === item.id"
-                    @click="cancelEdit" 
-                    class="text-xs text-gray-500 hover:underline"
-                  >
-                    Cancel
-                  </button>
-                  <button @click="deleteAnswer(item.id)" class="text-xs text-red-500 hover:underline">Delete</button>
+                  <template v-if="editingId === cluster.id">
+                    <button @click="saveEdit(cluster.id)" class="text-xs text-green-500 hover:underline">Save</button>
+                    <button @click="cancelEdit" class="text-xs text-gray-500 hover:underline">Cancel</button>
+                  </template>
+                  <button @click="deleteAnswer(cluster.id)" class="text-xs text-red-500 hover:underline">Delete Group</button>
                 </div>
             </div>
         </div>
@@ -63,7 +60,7 @@
 import { ref, nextTick } from 'vue';
 import { useSavedAnswers } from '@/composables/SavedAnswers';
 
-const { savedAnswers, deleteAnswer, updateAnswer } = useSavedAnswers();
+const { savedAnswers, deleteAnswer, updateAnswer, deleteQuestionVariant } = useSavedAnswers();
 
 // Edit state
 const editingId = ref<string | null>(null);

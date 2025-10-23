@@ -123,30 +123,46 @@ worker.onmessage = async (event) => {
     const { type, payload } = event.data;
     if (type === 'embeddingComplete') {
         const { id, embedding } = payload;
-        console.log('📨 Semantic Autofill: Embedding completed for ID:', id);
-        console.log('📨 Semantic Autofill: Embedding type:', typeof embedding);
-        console.log('📨 Semantic Autofill: Embedding is array:', Array.isArray(embedding));
-        console.log('📨 Semantic Autofill: Embedding length:', embedding?.length);
-        console.log('📨 Semantic Autofill: First few values:', embedding?.slice(0, 5));
         
         if (pendingEmbeddings.has(id)) {
-            const { question, answer, sourceUrl } = pendingEmbeddings.get(id);
-            const savedAnswers = await getSavedAnswers();
-            const newAnswer = {
-                id: self.crypto.randomUUID(),
-                question,
-                answer,
-                sourceUrl,
-                embedding,
-                timestamp: new Date().toISOString(),
-            };
-            console.log('💾 Semantic Autofill: Saving new answer with embedding:', newAnswer);
-            await chrome.storage.local.set({ saved_answers: [...savedAnswers, newAnswer] });
-            console.log('✅ Semantic Autofill: Successfully saved new Q&A:', newAnswer);
+            const { question, answer, sourceUrl, clusterIdToUpdate } = pendingEmbeddings.get(id);
+            const savedAnswerClusters = await getSavedAnswers();
+
+            if (clusterIdToUpdate) {
+                // Add a new question variant to an existing cluster
+                const newQuestionVariant = {
+                    id: self.crypto.randomUUID(),
+                    question,
+                    sourceUrl,
+                    embedding,
+                    timestamp: new Date().toISOString(),
+                };
+                
+                const clusterIndex = savedAnswerClusters.findIndex(c => c.id === clusterIdToUpdate);
+                if (clusterIndex > -1) {
+                    savedAnswerClusters[clusterIndex].questions.push(newQuestionVariant);
+                    console.log('💾 Semantic Autofill: Added new question to cluster:', savedAnswerClusters[clusterIndex]);
+                    await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
+                }
+            } else {
+                // Create a new answer cluster
+                const newCluster = {
+                    id: self.crypto.randomUUID(),
+                    answer,
+                    questions: [{
+                        id: self.crypto.randomUUID(),
+                        question,
+                        sourceUrl,
+                        embedding,
+                        timestamp: new Date().toISOString(),
+                    }],
+                };
+                console.log('💾 Semantic Autofill: Saving new answer cluster:', newCluster);
+                await chrome.storage.local.set({ saved_answers: [...savedAnswerClusters, newCluster] });
+            }
             pendingEmbeddings.delete(id);
         }
     } else if (type === 'similarityResult') {
-        // *** FIX: Added comprehensive logging for match results ***
         if (payload && currentFocusedElement) {
             console.log(`✅ Semantic Autofill: Match found with similarity ${payload.similarity.toFixed(4)}. Suggesting answer: "${payload.answer}"`);
             suggestAnswer(currentFocusedElement, payload.answer);
@@ -179,25 +195,52 @@ function getQuestionForInput(input) {
 
 function captureAnswer(event) {
     const input = event.target;
+    const answer = input.value.trim();
 
-    // *** FIX: Check if the input was autofilled. If so, don't save it again. ***
-    if (input.getAttribute('data-autofilled') === 'true') {
-        input.removeAttribute('data-autofilled'); // Clean up the tag for future interactions
-        console.log('📝 Semantic Autofill: Skipping save for autofilled answer.');
+    const cleanupAttributes = () => {
+        input.removeAttribute('data-suggested-cluster-id');
+        input.removeAttribute('data-autofilled');
+    };
+
+    if (!answer || answer.length < 2) {
+        cleanupAttributes();
         return;
     }
 
-    if (!input.value || input.value.length < 2) return;
     const question = getQuestionForInput(input);
-    if (question && question.length > 5) {
+    if (!question || question.length <= 5) {
+        cleanupAttributes();
+        return;
+    }
+    
+    const wasAutofilled = input.getAttribute('data-autofilled') === 'true';
+    const suggestedClusterId = input.getAttribute('data-suggested-cluster-id');
+    
+    // Scenario 1: User accepted suggestion without editing. Link new question to the cluster.
+    if (wasAutofilled && suggestedClusterId) {
+        console.log('📝 Semantic Autofill: Linking new question to existing cluster.');
         const id = self.crypto.randomUUID();
         pendingEmbeddings.set(id, {
             question,
-            answer: input.value,
-            sourceUrl: window.location.href
+            answer: null, // Not a new answer
+            sourceUrl: window.location.href,
+            clusterIdToUpdate: suggestedClusterId,
+        });
+        worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
+    } 
+    // Scenario 2: User typed a new answer OR edited a suggestion. Create a new cluster.
+    else if (!wasAutofilled) {
+        console.log('📝 Semantic Autofill: Saving new answer/cluster.');
+        const id = self.crypto.randomUUID();
+        pendingEmbeddings.set(id, {
+            question,
+            answer: answer,
+            sourceUrl: window.location.href,
         });
         worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
     }
+
+    cleanupAttributes();
 }
 
 let currentFocusedElement = null;
@@ -208,19 +251,31 @@ async function findAndSuggestAnswer(event) {
     const question = getQuestionForInput(input);
     
     if (question && question.length > 5) {
-        const savedAnswers = await getSavedAnswers();
-        if (savedAnswers.length > 0) {
-            // NOTE: The temporary worker pattern is inefficient but is what you currently have.
-            // This fix focuses only on the logic, not a full refactor.
+        const savedAnswerClusters = await getSavedAnswers(); // This now returns AnswerCluster[]
+        if (savedAnswerClusters.length > 0) {
+            // Flatten clusters into a list of questions for the worker
+            const allQuestions = savedAnswerClusters.flatMap(cluster => 
+                (cluster.questions || []).map(q => ({
+                    ...q, // id, question, sourceUrl, embedding, timestamp
+                    answer: cluster.answer, // Add answer for suggestion
+                    clusterId: cluster.id, // Keep track of origin cluster
+                }))
+            );
+
+            if (allQuestions.length === 0) return;
+
             const tempWorker = new Worker(workerUrl, { type: 'module' });
             tempWorker.postMessage({type: 'generateEmbedding', payload: { id: 'query_lookup', text: question }});
             tempWorker.onmessage = (e) => {
                 if (e.data.type === 'embeddingComplete' && e.data.payload.id === 'query_lookup') {
-                    tempWorker.postMessage({ type: 'findSimilar', payload: { queryEmbedding: e.data.payload.embedding, savedAnswers }});
+                    tempWorker.postMessage({ type: 'findSimilar', payload: { queryEmbedding: e.data.payload.embedding, savedAnswers: allQuestions }});
                 } else if (e.data.type === 'similarityResult') {
-                    if (e.data.payload && currentFocusedElement) {
-                        console.log(`✅ Semantic Autofill: Match found with similarity ${e.data.payload.similarity.toFixed(4)}. Suggesting answer: "${e.data.payload.answer}"`);
-                        suggestAnswer(currentFocusedElement, e.data.payload.answer);
+                    const bestMatch = e.data.payload;
+                    if (bestMatch && currentFocusedElement) {
+                        console.log(`✅ Semantic Autofill: Match found with similarity ${bestMatch.similarity.toFixed(4)}. Suggesting answer: "${bestMatch.answer}"`);
+                        // Store suggestion info on the element for captureAnswer to use
+                        currentFocusedElement.setAttribute('data-suggested-cluster-id', bestMatch.clusterId);
+                        suggestAnswer(currentFocusedElement, bestMatch.answer);
                     } else {
                          console.log('❌ Semantic Autofill: No sufficiently similar answer found in the database.');
                     }
@@ -236,7 +291,6 @@ function suggestAnswer(input, answer) {
         input.value = answer;
         input.style.backgroundColor = '#fef3c7'; // yellow-100
         
-        // *** FIX: Tag the input as autofilled ***
         input.setAttribute('data-autofilled', 'true');
 
         input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -244,7 +298,8 @@ function suggestAnswer(input, answer) {
         
         const cleanup = () => {
             input.style.backgroundColor = '';
-            // If the user edits the suggestion, remove the tag so it can be saved.
+            // If the user edits, remove the 'autofilled' tag so captureAnswer knows it changed.
+            // Do NOT remove 'data-suggested-cluster-id' here.
             if (input.getAttribute('data-autofilled')) {
                 input.removeAttribute('data-autofilled');
             }
