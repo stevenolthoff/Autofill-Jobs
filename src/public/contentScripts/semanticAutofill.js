@@ -305,7 +305,10 @@ function suggestAnswer(input, answer) {
             }
         };
 
-        input.addEventListener('input', cleanup, { once: true });
+        // Defer attaching the listener to prevent our own dispatched event from triggering it.
+        setTimeout(() => {
+            input.addEventListener('input', cleanup, { once: true });
+        }, 0);
         
         console.log('✅ Semantic Autofill: Answer field populated.');
     } else {
