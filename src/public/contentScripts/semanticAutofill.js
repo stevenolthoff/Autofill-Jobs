@@ -379,7 +379,7 @@ function getQuestionForInput(input) {
     return null;
 }
 
-function captureAnswer(event) {
+async function captureAnswer(event) {
     const input = event.target;
     const answer = input.value.trim();
 
@@ -414,16 +414,37 @@ function captureAnswer(event) {
         });
         worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
     } 
-    // Scenario 2: User typed a new answer OR edited a suggestion. Create a new cluster.
+    // Scenario 2: User typed a new answer OR edited a suggestion. Check if this question-answer combination already exists.
     else if (!wasAutofilled) {
-        console.log('📝 Semantic Autofill: Saving new answer/cluster.');
-        const id = self.crypto.randomUUID();
-        pendingEmbeddings.set(id, {
-            question,
-            answer: answer,
-            sourceUrl: window.location.href,
+        const savedAnswerClusters = await getSavedAnswers();
+        
+        // Check if this question already exists in any cluster
+        const questionKey = question.trim().toLowerCase();
+        
+        const existingCluster = savedAnswerClusters.find(cluster => {
+            // Check if this question already exists in this cluster
+            const questions = Array.isArray(cluster.questions) ? cluster.questions : [];
+            return questions.some(q => q.question.trim().toLowerCase() === questionKey);
         });
-        worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
+        
+        if (existingCluster) {
+            console.log('📝 Semantic Autofill: Question already exists, updating existing cluster answer.');
+            // Update the existing cluster's answer
+            const clusterIndex = savedAnswerClusters.findIndex(c => c.id === existingCluster.id);
+            if (clusterIndex > -1) {
+                savedAnswerClusters[clusterIndex].answer = answer;
+                await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
+            }
+        } else {
+            console.log('📝 Semantic Autofill: Saving new answer/cluster.');
+            const id = self.crypto.randomUUID();
+            pendingEmbeddings.set(id, {
+                question,
+                answer: answer,
+                sourceUrl: window.location.href,
+            });
+            worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
+        }
     }
 
     cleanupAttributes();
@@ -462,13 +483,15 @@ async function findAndSuggestAnswer(event) {
         const savedAnswerClusters = await getSavedAnswers(); // This now returns AnswerCluster[]
         if (savedAnswerClusters.length > 0) {
             // Flatten clusters into a list of questions for the worker
-            const allQuestions = savedAnswerClusters.flatMap(cluster => 
-                (cluster.questions || []).map(q => ({
+            const allQuestions = savedAnswerClusters.flatMap(cluster => {
+                // Ensure questions is an array
+                const questions = Array.isArray(cluster.questions) ? cluster.questions : [];
+                return questions.map(q => ({
                     ...q, // id, question, sourceUrl, embedding, timestamp
                     answer: cluster.answer, // Add answer for suggestion
                     clusterId: cluster.id, // Keep track of origin cluster
-                }))
-            );
+                }));
+            });
 
             if (allQuestions.length === 0) return;
 
