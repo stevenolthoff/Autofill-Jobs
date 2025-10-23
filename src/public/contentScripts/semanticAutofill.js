@@ -272,7 +272,8 @@ worker.onmessage = async (event) => {
                     const questionKey = question.trim().toLowerCase();
                     
                     // Check if this exact question already exists in this cluster
-                    const existingQuestion = cluster.questions.find(q => 
+                    const questions = Array.isArray(cluster.questions) ? cluster.questions : [];
+                    const existingQuestion = questions.find(q => 
                         q.question.trim().toLowerCase() === questionKey
                     );
                     
@@ -285,6 +286,10 @@ worker.onmessage = async (event) => {
                             timestamp: new Date().toISOString(),
                         };
                         
+                        // Ensure questions is an array before pushing
+                        if (!Array.isArray(cluster.questions)) {
+                            cluster.questions = [];
+                        }
                         cluster.questions.push(newQuestionVariant);
                         console.log('💾 Semantic Autofill: Added new question to cluster:', cluster);
                         await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
@@ -308,7 +313,8 @@ worker.onmessage = async (event) => {
                         const questionKey = question.trim().toLowerCase();
                         
                         // Check if this exact question already exists in this cluster
-                        const existingQuestion = cluster.questions.find(q => 
+                        const questions = Array.isArray(cluster.questions) ? cluster.questions : [];
+                        const existingQuestion = questions.find(q => 
                             q.question.trim().toLowerCase() === questionKey
                         );
                         
@@ -321,6 +327,10 @@ worker.onmessage = async (event) => {
                                 timestamp: new Date().toISOString(),
                             };
                             
+                            // Ensure questions is an array before pushing
+                            if (!Array.isArray(cluster.questions)) {
+                                cluster.questions = [];
+                            }
                             cluster.questions.push(newQuestionVariant);
                             await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
                         } else {
