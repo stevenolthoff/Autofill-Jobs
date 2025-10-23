@@ -364,6 +364,67 @@ const getSavedAnswers = async () => {
 };
 
 function getQuestionForInput(input) {
+    // For radio buttons, we need to find the question text differently
+    if (input.type === 'radio') {
+        console.log('🔍 Getting question for radio button:', input.name);
+        console.log('🔍 Radio button DOM structure:');
+        console.log('  Input:', input.outerHTML);
+        console.log('  Parent:', input.parentElement?.outerHTML);
+        console.log('  Grandparent:', input.parentElement?.parentElement?.outerHTML);
+        
+        // Look for common question text patterns around radio buttons
+        let parent = input.parentElement;
+        for (let i = 0; i < 5 && parent; i++) {
+            console.log('🔍 Checking parent level', i, ':', parent.tagName, parent.className, parent.id);
+            
+            // Look for question text in various common patterns
+            const questionSelectors = [
+                'label:not([for])', // Label that's not associated with a specific input
+                '.question-text',
+                '.field-label', 
+                '.form-label',
+                '.label-text',
+                'legend', // Fieldset legend
+                'h3', 'h4', 'h5', 'h6', // Headings
+                '.title',
+                '.text',
+                'p:not(:has(input))', // Paragraph that doesn't contain inputs
+                'div:not(:has(input))' // Div that doesn't contain inputs
+            ];
+            
+            for (const selector of questionSelectors) {
+                const questionElement = parent.querySelector(selector);
+                if (questionElement && questionElement.textContent) {
+                    const text = questionElement.textContent.trim();
+                    // Make sure it's not just the radio button label
+                    if (text.length > 5 && !text.includes(input.value) && text !== input.value) {
+                        console.log('🔍 Found question text via selector', selector, ':', text);
+                        return text;
+                    }
+                }
+            }
+            
+            // Also check the parent's text content directly
+            if (parent.textContent) {
+                const parentText = parent.textContent.trim();
+                // Look for text that's not the radio button value
+                const lines = parentText.split('\n').map(line => line.trim()).filter(line => line.length > 5);
+                for (const line of lines) {
+                    if (!line.includes(input.value) && line !== input.value && !line.includes('U.S. Citizen') && !line.includes('Permanent Resident')) {
+                        console.log('🔍 Found question text in parent:', line);
+                        return line;
+                    }
+                }
+            }
+            
+            parent = parent.parentElement;
+        }
+        
+        console.log('❌ No question text found for radio button');
+        return null;
+    }
+    
+    // Original logic for text inputs
     let label = document.querySelector(`label[for="${input.id}"]`);
     if (label && label.textContent) return label.textContent.trim();
     if (input.placeholder) return input.placeholder;
@@ -381,7 +442,21 @@ function getQuestionForInput(input) {
 
 async function captureAnswer(event) {
     const input = event.target;
-    const answer = input.value.trim();
+    let answer;
+    
+    console.log('💾 captureAnswer called for:', input.type, input.name, input.value);
+    
+    // Handle radio buttons differently - get the label text instead of value
+    if (input.type === 'radio') {
+        const label = document.querySelector(`label[for="${input.id}"]`) || 
+                     input.closest('label') || 
+                     input.parentElement.querySelector('label');
+        answer = label ? label.textContent.trim() : input.value.trim();
+        console.log('📻 Radio button label found:', label ? label.textContent.trim() : 'none');
+        console.log('📻 Radio button answer extracted:', answer);
+    } else {
+        answer = input.value.trim();
+    }
 
     const cleanupAttributes = () => {
         input.removeAttribute('data-suggested-cluster-id');
@@ -389,12 +464,15 @@ async function captureAnswer(event) {
     };
 
     if (!answer || answer.length < 2) {
+        console.log('❌ Answer too short or empty:', answer);
         cleanupAttributes();
         return;
     }
 
     const question = getQuestionForInput(input);
+    console.log('❓ Question extracted:', question);
     if (!question || question.length <= 5) {
+        console.log('❌ Question too short or empty:', question);
         cleanupAttributes();
         return;
     }
@@ -416,7 +494,9 @@ async function captureAnswer(event) {
     } 
     // Scenario 2: User typed a new answer OR edited a suggestion. Check if this question-answer combination already exists.
     else if (!wasAutofilled) {
+        console.log('📝 Semantic Autofill: Processing new answer - not autofilled');
         const savedAnswerClusters = await getSavedAnswers();
+        console.log('📝 Current saved clusters count:', savedAnswerClusters.length);
         
         // Check if this question already exists in any cluster
         const questionKey = question.trim().toLowerCase();
@@ -434,6 +514,7 @@ async function captureAnswer(event) {
             if (clusterIndex > -1) {
                 savedAnswerClusters[clusterIndex].answer = answer;
                 await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
+                console.log('✅ Updated existing cluster with new answer:', answer);
             }
         } else {
             console.log('📝 Semantic Autofill: Saving new answer/cluster.');
@@ -444,6 +525,7 @@ async function captureAnswer(event) {
                 sourceUrl: window.location.href,
             });
             worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
+            console.log('✅ Created new cluster for question:', question, 'answer:', answer);
         }
     }
 
@@ -564,6 +646,23 @@ document.addEventListener('focusout', (e) => {
     }
 });
 
+// Handle radio button changes (they don't trigger focus events)
+document.addEventListener('change', (e) => {
+    if (e.target.type === 'radio') {
+        console.log('📻 Radio button changed:', e.target.name, e.target.value, e.target.checked);
+        captureAnswer(e);
+    }
+});
+
+// Handle radio button clicks for suggestions (they don't trigger focus events)
+document.addEventListener('click', (e) => {
+    if (e.target.type === 'radio') {
+        console.log('📻 Radio button clicked:', e.target.name, e.target.value, e.target.checked);
+        // Radio buttons don't need suggestion popups - they auto-fill directly
+        // The change event will handle saving the answer
+    }
+});
+
 // Reset dismissal flag when user starts typing
 document.addEventListener('input', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
@@ -574,5 +673,152 @@ document.addEventListener('input', (e) => {
 worker.onerror = (error) => {
     console.error('💥 Semantic Autofill: Worker error:', error);
 };
+
+// *** Proactive Autofill Scan for High-Confidence Matches ***
+
+const AUTOFILL_CONFIDENCE_THRESHOLD = 0.95; // Use a high threshold for proactive autofill
+
+async function scanAndAutofillPage() {
+    console.log('🔍 Semantic Autofill: Scanning page for high-confidence autofill opportunities.');
+    const savedAnswerClusters = await getSavedAnswers();
+    console.log('🔍 Found saved clusters:', savedAnswerClusters.length);
+    if (savedAnswerClusters.length === 0) return;
+
+    // Flatten clusters for the worker
+    const allQuestions = savedAnswerClusters.flatMap(cluster => 
+        (Array.isArray(cluster.questions) ? cluster.questions : []).map(q => ({
+            ...q, answer: cluster.answer, clusterId: cluster.id,
+        }))
+    );
+    console.log('🔍 Flattened questions for scanning:', allQuestions.length);
+    if (allQuestions.length === 0) return;
+
+    const questionElements = document.querySelectorAll('.application-question, .form-group');
+    console.log('🔍 Found question elements:', questionElements.length);
+
+    for (const el of questionElements) {
+        // Find the first input (text, textarea, or radio) to represent the question
+        const input = el.querySelector('input[type="text"], textarea, input[type="radio"]');
+        if (!input) continue;
+
+        console.log('🔍 Processing input:', input.type, input.name, input.value);
+        const questionText = getQuestionForInput(input);
+        console.log('🔍 Question text extracted:', questionText);
+        if (!questionText || questionText.length <= 5) continue;
+        
+        // Use a temporary worker for each question lookup to avoid complexity
+        const tempWorker = new Worker(workerUrl, { type: 'module' });
+        tempWorker.postMessage({ type: 'generateEmbedding', payload: { id: 'scan_query', text: questionText } });
+        
+        tempWorker.onmessage = (e) => {
+            if (e.data.type === 'embeddingComplete') {
+                tempWorker.postMessage({ type: 'findSimilar', payload: { queryEmbedding: e.data.payload.embedding, savedAnswers: allQuestions } });
+            } else if (e.data.type === 'similarityResult') {
+                const bestMatch = e.data.payload?.[0];
+                console.log('🔍 Best match found:', bestMatch ? `${bestMatch.similarity} - ${bestMatch.answer}` : 'none');
+                
+                if (bestMatch && bestMatch.similarity >= AUTOFILL_CONFIDENCE_THRESHOLD) {
+                    console.log('🔍 High confidence match found, attempting autofill');
+                    if (input.type === 'radio') {
+                        // Ensure no radio button in this group is already checked by the user
+                        const groupName = input.name;
+                        if (groupName && !document.querySelector(`input[type="radio"][name="${groupName}"]:checked`)) {
+                            console.log('🔍 Auto-filling radio button group:', groupName);
+                            suggestRadioAnswer(input, bestMatch);
+                        } else {
+                            console.log('🔍 Radio group already has selection or no group name');
+                        }
+                    } else if (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA') {
+                        // Ensure we don't overwrite user input
+                        if (!input.value) {
+                            console.log('🔍 Auto-filling text input');
+                            suggestAnswer(input, bestMatch.answer);
+                            input.setAttribute('data-suggested-cluster-id', bestMatch.clusterId);
+                        } else {
+                            console.log('🔍 Text input already has value, skipping');
+                        }
+                    }
+                } else {
+                    console.log('🔍 Match confidence too low:', bestMatch ? bestMatch.similarity : 'no match');
+                }
+                tempWorker.terminate();
+            }
+        };
+    }
+}
+
+function suggestRadioAnswer(radioInput, match) {
+    console.log('📻 suggestRadioAnswer called for group:', radioInput.name, 'looking for:', match.answer);
+    
+    // Find all radio buttons in the same group
+    const groupName = radioInput.name;
+    if (!groupName) {
+        console.log('❌ No group name found for radio button');
+        return;
+    }
+    
+    const radioButtons = document.querySelectorAll(`input[type="radio"][name="${groupName}"]`);
+    console.log('📻 Found radio buttons in group:', radioButtons.length);
+    const answerText = match.answer.toLowerCase().trim();
+    
+    // Look for a radio button whose label or value matches the answer
+    for (const radio of radioButtons) {
+        const label = document.querySelector(`label[for="${radio.id}"]`) || 
+                     radio.closest('label') || 
+                     radio.parentElement.querySelector('label');
+        
+        if (label) {
+            const labelText = label.textContent.toLowerCase().trim();
+            const radioValue = radio.value.toLowerCase().trim();
+            
+            console.log('📻 Checking radio:', labelText, 'value:', radioValue, 'against:', answerText);
+            
+            // Check if the label or value matches our answer
+            if (labelText.includes(answerText) || 
+                answerText.includes(labelText) ||
+                radioValue.includes(answerText) ||
+                answerText.includes(radioValue)) {
+                
+                console.log('📻 Match found! Selecting radio button');
+                
+                // Select this radio button
+                radio.checked = true;
+                radio.style.backgroundColor = '#fef3c7'; // yellow-100
+                radio.setAttribute('data-autofilled', 'true');
+                
+                // Dispatch events to notify the form
+                radio.dispatchEvent(new Event('change', { bubbles: true }));
+                radio.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                console.log('✅ Semantic Autofill: Radio button selected:', labelText);
+                
+                // Clean up styling after a delay
+                setTimeout(() => {
+                    radio.style.backgroundColor = '';
+                }, 2000);
+                
+                break;
+            }
+        } else {
+            console.log('📻 No label found for radio button');
+        }
+    }
+}
+
+// *** Trigger for Proactive Page Scan ***
+let scanHasRun = false;
+const formObserver = new MutationObserver((mutations, observer) => {
+    const applicationForm = document.querySelector('.application-form, #application-form, #mainContent form');
+    console.log('🔍 Form observer checking for forms, found:', applicationForm ? 'yes' : 'no');
+    if (applicationForm && !scanHasRun) {
+        console.log('🔍 Application form detected, starting scan in 1 second');
+        scanHasRun = true;
+        // Delay slightly to ensure all dynamic elements have loaded
+        setTimeout(scanAndAutofillPage, 1000);
+        observer.disconnect();
+    }
+});
+
+formObserver.observe(document.body, { childList: true, subtree: true });
 
 console.log('🎧 Semantic Autofill: Event listeners attached');
