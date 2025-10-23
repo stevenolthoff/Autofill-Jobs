@@ -4,7 +4,7 @@
         <div class="flex flex-wrap gap-2 col-span-2">
             <GridDataItem v-for="option in dataRef" :key="option" :value="option" :content="option" :type="label">
             </GridDataItem>
-            <GridDataItem :type="label" isLast=true updateData="loadData" />
+            <GridDataItem :type="label" isLast=true updateData="loadData" @add-item="$emit('add-item')" />
         </div>
     </div>
 </template>
@@ -15,6 +15,7 @@ import GridDataItem from '@/components/GridDataItem.vue';
 import { useResumeDetails } from '@/composables/ResumeDetails';
 export default {
     props: ['label'],
+    emits: ['add-item'],
     components: {
         GridDataItem
     },

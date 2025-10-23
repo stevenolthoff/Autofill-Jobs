@@ -6,7 +6,7 @@
                 <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
             </svg>
         </button>
-        <button v-if="isLast" @click="toggleIsOn" class="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
+        <button v-if="isLast" @click="$emit('add-item')" class="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
              <svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor">
                 <path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
             </svg>
@@ -17,14 +17,12 @@
 <script lang="ts">
 import { ref, watch } from 'vue';
 
-import { useSkills } from '@/composables/Skills.ts';
-import { useWorkExperience } from '@/composables/WorkExperience.ts';
 import { useResumeDetails } from '@/composables/ResumeDetails';
 export default {
     props: ['content', 'isLast', 'type'],
+    emits: ['add-item'],
     setup(props) {
 
-        const { toggleIsOn } = props.type === "Work Experience" ? useWorkExperience() : useSkills();
         const { loadDetails } = useResumeDetails();
 
         const deleteSelf = () => {
@@ -71,7 +69,7 @@ export default {
             });
         }
         return {
-            toggleIsOn, deleteSelf
+            deleteSelf
         };
     },
 };

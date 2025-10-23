@@ -1,68 +1,66 @@
 <template>
-    <div v-if='isOn' class="explanationBg">
-        <h1 class="explanation">Add a skill</h1>
-        <div class="inputFieldDiv">
-            <h2></h2>
-            <input placeholder="JavaScript" v-model="inputValue">
-        </div>
-        <svg style='cursor: pointer;' @click="saveData" xmlns="http://www.w3.org/2000/svg" height="24px"
-            viewBox="0 -960 960 960" width="24px" fill="#5f6368">
-            <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-        </svg>
-        <svg style='cursor: pointer;' @click="exit" xmlns="http://www.w3.org/2000/svg" height="24px"
-            viewBox="0 -960 960 960" width="24px" fill="#5f6368">
-            <path
-                d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
-        </svg>
+    <div class="p-6 flex flex-col gap-6">
+        <header class="flex justify-between items-center">
+            <h1 class="text-xl font-semibold text-primary">Add Skill</h1>
+        </header>
+
+        <main class="flex flex-col gap-4">
+            <div class="flex flex-col gap-1.5">
+                <label for="skillName" class="text-sm font-medium text-muted-foreground">Skill</label>
+                <input id="skillName" placeholder="JavaScript" v-model="inputValue" class="h-9 px-3 py-2 text-sm bg-transparent rounded-md border border-input ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            </div>
+        </main>
+        
+        <footer class="flex justify-end gap-3 pt-2">
+            <button @click="exit" class="h-9 px-4 inline-flex items-center justify-center rounded-md text-sm font-medium border border-border bg-transparent hover:bg-muted">Cancel</button>
+            <button @click="saveData" class="h-9 px-4 inline-flex items-center justify-center rounded-md text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90">Save Skill</button>
+        </footer>
     </div>
 </template>
 
 <script lang="ts">
 import { ref } from 'vue';
 import { useResumeDetails } from '@/composables/ResumeDetails';
-import { useSkills } from '@/composables/Skills.ts';
 export default {
-
-    setup() {
+    emits: ['close'],
+    setup(props, { emit }) {
         const { loadDetails } = useResumeDetails();
-        const { isOn, toggleIsOn } = useSkills();
         const inputValue = ref('');
+
         const exit = () => {
             inputValue.value = '';
-            toggleIsOn();
+            emit('close');
         }
+
         const saveData = () => {
-            let res = inputValue.value;
-            if (!chrome.storage) return;
-            if (!res) return;
+            const newSkill = inputValue.value.trim();
+            if (!chrome.storage || !newSkill) return;
+            
             chrome.storage.local.get(['Resume_details'], (data) => {
-                let jsonData = data['Resume_details'];
-                if (jsonData) {
-                    jsonData.skills = [...jsonData.skills ?? [], res]
-                    chrome.storage.local.set({ ['Resume_details']: jsonData }, () => {
-                        console.log(`'Resume_details' saved:`, data);
+                const resumeDetails = data['Resume_details'] || { skills: [], experiences: [] };
+                
+                const existingSkills = resumeDetails.skills || [];
+
+                if (!existingSkills.includes(newSkill)) {
+                    const updatedDetails = {
+                        ...resumeDetails,
+                        skills: [...existingSkills, newSkill]
+                    };
+                    
+                    chrome.storage.local.set({ 'Resume_details': updatedDetails }, () => {
+                        console.log(`'Resume_details' updated:`, updatedDetails);
+                        loadDetails();
+                        emit('close');
                     });
-                    toggleIsOn();
-                    loadDetails();
                 } else {
-                    let defaultData = {
-                        "skills": [
-                            res
-                        ],
-                        "experiences": [
-                            {}
-                        ]
-                    }
-                    chrome.storage.local.set({ ['Resume_details']: defaultData }, () => {
-                        console.log(`'Resume_details' saved:`, data);
-                    });
-                    loadDetails();
-                    toggleIsOn();
+                    emit('close'); // Skill already exists, just close
                 }
             });
         }
         return {
-            isOn, exit, inputValue, saveData
+            inputValue,
+            exit, 
+            saveData
         };
     },
 };

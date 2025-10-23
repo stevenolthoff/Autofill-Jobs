@@ -1,90 +1,66 @@
 <template>
-    <div v-if='isOn' class="explanationBg">
-        <h1 class="explanation">Add work experience</h1>
-        <div class="inputFieldDiv">
-            <h2>Job Title</h2>
-            <input placeholder="Software Engineer I" v-model="jobTitle" />
-        </div>
-        <div class="inputFieldDiv">
-            <h2>Job Employer</h2>
-            <input placeholder="JavaScript" v-model="jobEmployer" />
-        </div>
-        <div class="inputFieldDiv">
-            <h2>Start Month</h2>
-            <select v-model="startMonth">
-                <option v-for="option in [
-                    'January',
-                    'February',
-                    'March',
-                    'April',
-                    'May',
-                    'June',
-                    'July',
-                    'August',
-                    'September',
-                    'October',
-                    'November',
-                    'December'
-                ]" :key="option" :value="option">{{ option }}</option>
-            </select>
+    <div class="p-6 flex flex-col gap-6">
+        <header class="flex justify-between items-center">
+            <h1 class="text-xl font-semibold text-primary">Add Work Experience</h1>
+        </header>
 
-        </div>
-        <div class="inputFieldDiv">
-            <h2>Start Year</h2>
-            <input placeholder="2024" v-model="startYear" />
-        </div>
+        <main class="flex flex-col gap-4">
+            <div class="flex flex-col gap-1.5">
+                <label for="jobTitle" class="text-sm font-medium text-muted-foreground">Job Title</label>
+                <input id="jobTitle" placeholder="Software Engineer I" v-model="jobTitle" class="h-9 px-3 py-2 text-sm bg-transparent rounded-md border border-input ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+            </div>
 
-        <div class="inputFieldDiv">
-            <h2>End Month</h2>
-            <select v-model="endMonth">
-                <option v-for="option in [
-                    'January',
-                    'February',
-                    'March',
-                    'April',
-                    'May',
-                    'June',
-                    'July',
-                    'August',
-                    'September',
-                    'October',
-                    'November',
-                    'December'
-                ]" :key="option" :value="option">{{ option }}</option>
-            </select>
+            <div class="flex flex-col gap-1.5">
+                <label for="jobEmployer" class="text-sm font-medium text-muted-foreground">Job Employer</label>
+                <input id="jobEmployer" placeholder="Google" v-model="jobEmployer" class="h-9 px-3 py-2 text-sm bg-transparent rounded-md border border-input ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+            </div>
 
-        </div>
-        <div class="inputFieldDiv">
-            <h2>End Year</h2>
-            <input placeholder="2024" v-model="endYear" />
-        </div>
-        <div class="textAreaDiv">
-            <h2>Description</h2>
-            <textarea
-                placeholder="• Spearheaded the development of mobile application pages using React Native, Expo, Figma"
-                v-model="roleDescription" />
-        </div>
-        <svg style='cursor: pointer;' @click="saveData" xmlns="http://www.w3.org/2000/svg" height="24px"
-            viewBox="0 -960 960 960" width="24px" fill="#5f6368">
-            <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-        </svg>
-        <svg style='cursor: pointer;' @click="exit" xmlns="http://www.w3.org/2000/svg" height="24px"
-            viewBox="0 -960 960 960" width="24px" fill="#5f6368">
-            <path
-                d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
-        </svg>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                    <label for="startMonth" class="text-sm font-medium text-muted-foreground">Start Month</label>
+                    <select id="startMonth" v-model="startMonth" class="h-9 px-3 py-2 text-sm bg-transparent rounded-md border border-input ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                         <option v-for="option in months" :key="option" :value="option">{{ option }}</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="startYear" class="text-sm font-medium text-muted-foreground">Start Year</label>
+                    <input id="startYear" placeholder="2024" v-model="startYear" class="h-9 px-3 py-2 text-sm bg-transparent rounded-md border border-input ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                 <div class="flex flex-col gap-1.5">
+                    <label for="endMonth" class="text-sm font-medium text-muted-foreground">End Month</label>
+                    <select id="endMonth" v-model="endMonth" class="h-9 px-3 py-2 text-sm bg-transparent rounded-md border border-input ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <option v-for="option in months" :key="option" :value="option">{{ option }}</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="endYear" class="text-sm font-medium text-muted-foreground">End Year</label>
+                    <input id="endYear" placeholder="Present" v-model="endYear" class="h-9 px-3 py-2 text-sm bg-transparent rounded-md border border-input ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                </div>
+            </div>
+            
+            <div class="flex flex-col gap-1.5">
+                <label for="roleDescription" class="text-sm font-medium text-muted-foreground">Description</label>
+                <textarea id="roleDescription" placeholder="• Spearheaded the development of a new feature..." v-model="roleDescription" rows="5" class="p-3 text-sm bg-transparent rounded-md border border-input ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none" />
+            </div>
+        </main>
+
+        <footer class="flex justify-end gap-3 pt-2">
+            <button @click="exit" class="h-9 px-4 inline-flex items-center justify-center rounded-md text-sm font-medium border border-border bg-transparent hover:bg-muted">Cancel</button>
+            <button @click="saveData" class="h-9 px-4 inline-flex items-center justify-center rounded-md text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90">Save Experience</button>
+        </footer>
     </div>
 </template>
 
 <script lang="ts">
-import { ref, watch } from 'vue';
-import { useWorkExperience } from '@/composables/WorkExperience.ts';
+import { ref } from 'vue';
 import { useResumeDetails } from '@/composables/ResumeDetails';
 export default {
-
-    setup() {
+    emits: ['close'],
+    setup(props, { emit }) {
         const { loadDetails } = useResumeDetails();
-        const { isOn, toggleIsOn } = useWorkExperience();
         const jobTitle = ref('');
         const jobEmployer = ref('');
         const startMonth = ref('');
@@ -92,8 +68,12 @@ export default {
         const endMonth = ref('');
         const endYear = ref('');
         const roleDescription = ref('');
+        const months = [
+            'January', 'February', 'March', 'April', 'May', 'June', 'July',
+            'August', 'September', 'October', 'November', 'December'
+        ];
 
-        const exit = () => {
+        const clearFields = () => {
             jobTitle.value = '';
             jobEmployer.value = '';
             startMonth.value = '';
@@ -101,47 +81,47 @@ export default {
             endMonth.value = '';
             endYear.value = '';
             roleDescription.value = '';
-            toggleIsOn();
         }
+
+        const exit = () => {
+            clearFields();
+            emit('close');
+        }
+
         const saveData = () => {
-            let experience = {
-                "jobTitle": jobTitle.value,
-                "jobEmployer": jobEmployer.value,
-                "jobDuration": `${startMonth.value} ${startYear.value} - ${endMonth.value} ${endYear.value}`,
+            const experience = {
+                "jobTitle": jobTitle.value.trim(),
+                "jobEmployer": jobEmployer.value.trim(),
+                "jobDuration": `${startMonth.value} ${startYear.value.trim()} - ${endMonth.value} ${endYear.value.trim()}`,
                 "isCurrentEmployer": (endYear.value.toLowerCase().includes('present') || endYear.value.toLowerCase().includes('current')),
-                "roleBulletsString": roleDescription.value
+                "roleBulletsString": roleDescription.value.trim()
             };
-            if (!chrome.storage) return;
-            if (!experience) return;
+
+            if (!chrome.storage || !experience.jobTitle || !experience.jobEmployer) {
+                return; // Basic validation
+            };
+
             chrome.storage.local.get(['Resume_details'], (data) => {
-                let jsonData = data['Resume_details'];
-                if (jsonData) {
-                    jsonData.experiences = [...jsonData.experiences ?? [], experience]
-                    chrome.storage.local.set({ ['Resume_details']: jsonData }, () => {
-                        console.log(`'Resume_details' saved:`, data);
-                    });
+                const resumeDetails = data['Resume_details'] || { skills: [], experiences: [] };
+                
+                const existingExperiences = (resumeDetails.experiences || []).filter((exp: any) => exp && exp.jobTitle);
+
+                const updatedDetails = {
+                    ...resumeDetails,
+                    experiences: [...existingExperiences, experience]
+                };
+
+                chrome.storage.local.set({ 'Resume_details': updatedDetails }, () => {
+                    console.log(`'Resume_details' updated:`, updatedDetails);
                     loadDetails();
-                    toggleIsOn();
-                } else {
-                    let defaultData = {
-                        "skills": [
-                            {}
-                        ],
-                        "experiences": [
-                            experience
-                        ]
-                    }
-                    chrome.storage.local.set({ ['Resume_details']: defaultData }, () => {
-                        console.log(`'Resume_details' saved:`, data);
-                    });
-                    loadDetails();
-                    toggleIsOn();
-                }
+                    emit('close');
+                });
             });
         }
         return {
-            isOn, exit, jobTitle, jobEmployer, startMonth, startYear,
-            endMonth, endYear, roleDescription,
+            jobTitle, jobEmployer, startMonth, startYear,
+            endMonth, endYear, roleDescription, months,
+            exit,
             saveData
         };
     },

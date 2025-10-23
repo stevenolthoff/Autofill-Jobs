@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 //Component imports
 import InputField from '@/components/InputField.vue';
 import GridDataField from '@/components/GridDataField.vue';
@@ -8,15 +9,29 @@ import Explanation from '@/components/Explanation.vue';
 import EnterSkill from '@/components/EnterSkill.vue';
 import EnterWorkExperience from '@/components/EnterWorkExperience.vue';
 import SavedAnswers from '@/components/SavedAnswers.vue';
+
+const currentView = ref<'main' | 'addSkill' | 'addWorkExperience'>('main');
+
+function showAddSkill() {
+  currentView.value = 'addSkill';
+}
+
+function showAddWorkExperience() {
+  currentView.value = 'addWorkExperience';
+}
+
+function showMain() {
+  currentView.value = 'main';
+}
 </script>
 
 
 <template>
-  <EnterWorkExperience/>
-  <EnterSkill/>
+  <EnterWorkExperience v-if="currentView === 'addWorkExperience'" @close="showMain" />
+  <EnterSkill v-if="currentView === 'addSkill'" @close="showMain" />
   <Explanation/>
   
-  <div class="p-6 flex flex-col gap-8">
+  <div v-if="currentView === 'main'" class="p-6 flex flex-col gap-8">
     <header class="flex justify-between items-center">
       <h1 class="text-xl font-semibold text-primary">Autofill Jobs</h1>
       <div class="flex items-center gap-2">
@@ -39,8 +54,8 @@ import SavedAnswers from '@/components/SavedAnswers.vue';
       <section class="flex flex-col gap-4">
         <h2 class="text-base font-medium text-muted-foreground">Experience</h2>
         <InputField label="Resume" placeHolder="No file found"/>
-        <GridDataField label="Work Experience" />
-        <GridDataField label="Skills" />
+        <GridDataField label="Work Experience" @add-item="showAddWorkExperience" />
+        <GridDataField label="Skills" @add-item="showAddSkill" />
         <InputField label="API Key" explanation="The API Key field requires a Gemini-1.5-flash api key. This field is optional and is used to autofill the work experience and skills fields directly from your resume." placeHolder="AIyKwaSyBTOk..." />
         <InputField label="Current Employer" placeHolder="Apple" />
       </section>
