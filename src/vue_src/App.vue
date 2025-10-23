@@ -11,6 +11,7 @@ import EnterWorkExperience from '@/components/EnterWorkExperience.vue';
 import SavedAnswers from '@/components/SavedAnswers.vue';
 
 const currentView = ref<'main' | 'addSkill' | 'addWorkExperience'>('main');
+const editingExperienceIndex = ref<number | null>(null);
 
 function showAddSkill() {
   currentView.value = 'addSkill';
@@ -20,14 +21,20 @@ function showAddWorkExperience() {
   currentView.value = 'addWorkExperience';
 }
 
+function showEditWorkExperience(index: number) {
+  editingExperienceIndex.value = index;
+  currentView.value = 'addWorkExperience';
+}
+
 function showMain() {
   currentView.value = 'main';
+  editingExperienceIndex.value = null;
 }
 </script>
 
 
 <template>
-  <EnterWorkExperience v-if="currentView === 'addWorkExperience'" @close="showMain" />
+  <EnterWorkExperience v-if="currentView === 'addWorkExperience'" :experience-index="editingExperienceIndex" @close="showMain" />
   <EnterSkill v-if="currentView === 'addSkill'" @close="showMain" />
   <Explanation/>
   
@@ -54,7 +61,7 @@ function showMain() {
       <section class="flex flex-col gap-4">
         <h2 class="text-base font-medium text-muted-foreground">Experience</h2>
         <InputField label="Resume" placeHolder="No file found"/>
-        <GridDataField label="Work Experience" @add-item="showAddWorkExperience" />
+        <GridDataField label="Work Experience" @add-item="showAddWorkExperience" @edit-item="showEditWorkExperience" />
         <GridDataField label="Skills" @add-item="showAddSkill" />
         <InputField label="API Key" explanation="The API Key field requires a Gemini-1.5-flash api key. This field is optional and is used to autofill the work experience and skills fields directly from your resume." placeHolder="AIyKwaSyBTOk..." />
         <InputField label="Current Employer" placeHolder="Apple" />

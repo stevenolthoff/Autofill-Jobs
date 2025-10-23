@@ -1,7 +1,7 @@
 <template>
     <div class="p-6 flex flex-col gap-6">
         <header class="flex justify-between items-center">
-            <h1 class="text-xl font-semibold text-primary">Add Work Experience</h1>
+            <h1 class="text-xl font-semibold text-primary">{{ pageTitle }}</h1>
         </header>
 
         <main class="flex flex-col gap-4">
@@ -19,6 +19,7 @@
                 <div class="flex flex-col gap-1.5">
                     <label for="startMonth" class="text-sm font-medium text-muted-foreground">Start Month</label>
                     <select id="startMonth" v-model="startMonth" class="h-9 px-3 py-2 text-sm bg-transparent rounded-md border border-input ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                         <option value="" disabled>Select Month</option>
                          <option v-for="option in months" :key="option" :value="option">{{ option }}</option>
                     </select>
                 </div>
@@ -32,6 +33,7 @@
                  <div class="flex flex-col gap-1.5">
                     <label for="endMonth" class="text-sm font-medium text-muted-foreground">End Month</label>
                     <select id="endMonth" v-model="endMonth" class="h-9 px-3 py-2 text-sm bg-transparent rounded-md border border-input ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <option value="" disabled>Select Month</option>
                         <option v-for="option in months" :key="option" :value="option">{{ option }}</option>
                     </select>
                 </div>
@@ -49,18 +51,28 @@
 
         <footer class="flex justify-end gap-3 pt-2">
             <button @click="exit" class="h-9 px-4 inline-flex items-center justify-center rounded-md text-sm font-medium border border-border bg-transparent hover:bg-muted">Cancel</button>
-            <button @click="saveData" class="h-9 px-4 inline-flex items-center justify-center rounded-md text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90">Save Experience</button>
+            <button @click="saveData" class="h-9 px-4 inline-flex items-center justify-center rounded-md text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90">{{ saveButtonText }}</button>
         </footer>
     </div>
 </template>
 
 <script lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useResumeDetails } from '@/composables/ResumeDetails';
 export default {
+    props: {
+        experienceIndex: {
+            type: [Number, null],
+            default: null,
+        },
+    },
     emits: ['close'],
     setup(props, { emit }) {
         const { loadDetails } = useResumeDetails();
+        const isEditing = computed(() => props.experienceIndex !== null);
+        const pageTitle = computed(() => isEditing.value ? 'Edit Work Experience' : 'Add Work Experience');
+        const saveButtonText = computed(() => isEditing.value ? 'Save Changes' : 'Save Experience');
+
         const jobTitle = ref('');
         const jobEmployer = ref('');
         const startMonth = ref('');
@@ -73,18 +85,51 @@ export default {
             'August', 'September', 'October', 'November', 'December'
         ];
 
-        const clearFields = () => {
-            jobTitle.value = '';
-            jobEmployer.value = '';
-            startMonth.value = '';
-            startYear.value = '';
-            endMonth.value = '';
-            endYear.value = '';
-            roleDescription.value = '';
-        }
+        const loadExperienceData = () => {
+            if (isEditing.value && props.experienceIndex !== null && typeof props.experienceIndex === 'number') {
+                chrome.storage.local.get('Resume_details', (data) => {
+                    const resumeDetails = data['Resume_details'];
+                    if (resumeDetails && resumeDetails.experiences && resumeDetails.experiences[props.experienceIndex!]) {
+                        const exp = resumeDetails.experiences[props.experienceIndex!];
+                        jobTitle.value = exp.jobTitle || '';
+                        jobEmployer.value = exp.jobEmployer || '';
+                        roleDescription.value = exp.roleBulletsString || '';
+
+                        const duration = exp.jobDuration || '';
+                        const [start, end] = duration.split(' - ');
+
+                        if (start) {
+                            const startParts = start.trim().match(/^(\w+)\s(\d{4})$/);
+                            if(startParts) {
+                                startMonth.value = startParts[1] || '';
+                                startYear.value = startParts[2] || '';
+                            }
+                        }
+                        if (end) {
+                            const endParts = end.trim().match(/^(\w+)\s([\d{4}]+|present|current)$/i);
+                             if(endParts) {
+                                endMonth.value = endParts[1] || '';
+                                endYear.value = endParts[2] || '';
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Clear form when not editing
+                jobTitle.value = '';
+                jobEmployer.value = '';
+                startMonth.value = '';
+                startYear.value = '';
+                endMonth.value = '';
+                endYear.value = '';
+                roleDescription.value = '';
+            }
+        };
+
+        // Watch for changes in experienceIndex
+        watch(() => props.experienceIndex, loadExperienceData, { immediate: true });
 
         const exit = () => {
-            clearFields();
             emit('close');
         }
 
@@ -103,13 +148,16 @@ export default {
 
             chrome.storage.local.get(['Resume_details'], (data) => {
                 const resumeDetails = data['Resume_details'] || { skills: [], experiences: [] };
-                
-                const existingExperiences = (resumeDetails.experiences || []).filter((exp: any) => exp && exp.jobTitle);
+                let experiences = Array.isArray(resumeDetails.experiences) ? [...resumeDetails.experiences] : [];
 
-                const updatedDetails = {
-                    ...resumeDetails,
-                    experiences: [...existingExperiences, experience]
-                };
+                if (isEditing.value && typeof props.experienceIndex === 'number' && experiences[props.experienceIndex] !== undefined) {
+                    experiences[props.experienceIndex] = experience;
+                } else {
+                    experiences = experiences.filter((exp: any) => exp && exp.jobTitle);
+                    experiences.push(experience);
+                }
+
+                const updatedDetails = { ...resumeDetails, experiences };
 
                 chrome.storage.local.set({ 'Resume_details': updatedDetails }, () => {
                     console.log(`'Resume_details' updated:`, updatedDetails);
@@ -121,8 +169,7 @@ export default {
         return {
             jobTitle, jobEmployer, startMonth, startYear,
             endMonth, endYear, roleDescription, months,
-            exit,
-            saveData
+            exit, saveData, pageTitle, saveButtonText
         };
     },
 };
