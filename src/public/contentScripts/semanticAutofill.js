@@ -1,5 +1,12 @@
 console.log('🚀 Semantic Autofill: Script loaded');
 
+const cspBlockedDomains = new Set([
+    'jobs.ashbyhq.com',
+    'boards.greenhouse.io',
+    'job-boards.greenhouse.io'
+]);
+const isAIEnabled = !cspBlockedDomains.has(window.location.hostname);
+
 // Create worker using blob URL to avoid CORS issues
 const workerScript = `
 import { pipeline, cos_sim } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js';
@@ -115,22 +122,28 @@ self.addEventListener('message', async (event) => {
 });
 `;
 
-// Use inline worker script as blob URL (CSP may block this, but it's the only option)
-const blob = new Blob([workerScript], { type: 'application/javascript' });
-const workerUrl = URL.createObjectURL(blob);
-const worker = new Worker(workerUrl, { type: 'module' });
-const pendingEmbeddings = new Map();
-
-// Note: CSP on Greenhouse blocks blob URLs, so the worker won't work there
-// The autofill will still work via basic field matching, just without semantic AI features
-
 const LOW_ENTROPY_ANSWERS = new Set([
     'yes', 'no', 'true', 'false', 'male', 'female', 
     'i agree', 'i accept', 'n/a', 'none',
     'decline to self identify', `i don't wish to answer`
 ]);
 
-console.log('🤖 Semantic Autofill: Worker created');
+let worker = null;
+let pendingEmbeddings = new Map();
+
+if (isAIEnabled) {
+    console.log('✅ Semantic Autofill: AI features are enabled for this site.');
+    
+    // Use inline worker script as blob URL (CSP may block this, but it's the only option)
+    const blob = new Blob([workerScript], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(blob);
+    worker = new Worker(workerUrl, { type: 'module' });
+    pendingEmbeddings = new Map();
+    
+    console.log('🤖 Semantic Autofill: Worker created');
+} else {
+    console.log('⚠️ Semantic Autofill: AI features disabled due to strict CSP. Using text-based matching only.');
+}
 
 let suggestionPopup = null;
 let currentTargetInput = null;
@@ -265,115 +278,207 @@ function showSuggestionPopup(suggestions, inputElement) {
 }
 
 // Listen for completed embeddings from the worker
-worker.onmessage = async (event) => {
-    const { type, payload } = event.data;
-    if (type === 'embeddingComplete') {
-        const { id, embedding } = payload;
-        
-        if (pendingEmbeddings.has(id)) {
-            const { question, answer, sourceUrl, clusterIdToUpdate } = pendingEmbeddings.get(id);
-            const savedAnswerClusters = await getSavedAnswers();
+if (worker) {
+    worker.onmessage = async (event) => {
+        const { type, payload } = event.data;
+        if (type === 'embeddingComplete') {
+            const { id, embedding } = payload;
+            
+            if (pendingEmbeddings.has(id)) {
+                const { question, answer, sourceUrl, clusterIdToUpdate } = pendingEmbeddings.get(id);
+                const savedAnswerClusters = await getSavedAnswers();
 
-            // SCENARIO 1: We were explicitly told to update a cluster (e.g., user picked a suggestion)
-            if (clusterIdToUpdate) {
-                const clusterIndex = savedAnswerClusters.findIndex(c => c.id === clusterIdToUpdate);
-                if (clusterIndex > -1) {
-                    const cluster = savedAnswerClusters[clusterIndex];
-                    const questionKey = question.trim().toLowerCase();
-                    
-                    const existingQuestion = cluster.questions.find(q => 
-                        q.question.trim().toLowerCase() === questionKey
-                    );
-                    
-                    if (!existingQuestion) {
-                        cluster.questions.push({
-                            id: self.crypto.randomUUID(),
-                            question, sourceUrl, embedding, timestamp: new Date().toISOString(),
-                        });
-                        console.log('💾 Semantic Autofill: Added new question variant to existing cluster:', cluster.id);
-                        await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
-                    }
-                }
-            } 
-            // SCENARIO 2: A new Q&A pair needs to be saved. This is where the core intelligence lies.
-            else {
-                const allQuestions = savedAnswerClusters.flatMap(cluster => 
-                    (Array.isArray(cluster.questions) ? cluster.questions : []).map(q => ({
-                        ...q, answer: cluster.answer, clusterId: cluster.id,
-                    }))
-                );
-
-                // Find the most semantically similar existing question to decide which cluster to join
-                const bestMatches = await findSimilarAnswers(question, allQuestions);
-                const bestMatch = bestMatches?.[0];
-
-                // If a very similar question topic already exists, merge with that cluster.
-                if (bestMatch && bestMatch.similarity > 0.92) {
-                    console.log(`✅ High similarity match found (${(bestMatch.similarity * 100).toFixed(1)}%). Merging with cluster ${bestMatch.clusterId}.`);
-                    const clusterIndex = savedAnswerClusters.findIndex(c => c.id === bestMatch.clusterId);
+                // SCENARIO 1: We were explicitly told to update a cluster (e.g., user picked a suggestion)
+                if (clusterIdToUpdate) {
+                    const clusterIndex = savedAnswerClusters.findIndex(c => c.id === clusterIdToUpdate);
                     if (clusterIndex > -1) {
                         const cluster = savedAnswerClusters[clusterIndex];
                         const questionKey = question.trim().toLowerCase();
                         
-                        // Check if this exact question already exists in this cluster
                         const existingQuestion = cluster.questions.find(q => 
                             q.question.trim().toLowerCase() === questionKey
                         );
                         
                         if (!existingQuestion) {
-                            // Add the new question as a variant only if it doesn't already exist
                             cluster.questions.push({
                                 id: self.crypto.randomUUID(),
                                 question, sourceUrl, embedding, timestamp: new Date().toISOString(),
                             });
                             console.log('💾 Semantic Autofill: Added new question variant to existing cluster:', cluster.id);
-                        } else {
-                            console.log('💾 Semantic Autofill: Question already exists in cluster, skipping duplicate');
+                            await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
                         }
-                        
-                        // The latest answer for a topic becomes the new canonical answer.
-                        // This allows users to correct or update their answers over time.
-                        if (cluster.answer !== answer) {
-                            console.log(`📝 Updating cluster answer from "${cluster.answer}" to "${answer}".`);
-                            cluster.answer = answer;
-                        }
-                        
-                        await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
                     }
                 } 
-                // Otherwise, this is a new topic. Create a new cluster.
+                // SCENARIO 2: A new Q&A pair needs to be saved. This is where the core intelligence lies.
                 else {
-                    console.log(`ℹ️ No highly similar question cluster found. Creating a new cluster for this topic.`);
-                    const newCluster = {
-                        id: self.crypto.randomUUID(),
-                        answer,
-                        questions: [{
+                    const allQuestions = savedAnswerClusters.flatMap(cluster => 
+                        (Array.isArray(cluster.questions) ? cluster.questions : []).map(q => ({
+                            ...q, answer: cluster.answer, clusterId: cluster.id,
+                        }))
+                    );
+
+                    // Find the most semantically similar existing question to decide which cluster to join
+                    const bestMatches = await findSimilarAnswers(question, allQuestions);
+                    const bestMatch = bestMatches?.[0];
+
+                    // If a very similar question topic already exists, merge with that cluster.
+                    if (bestMatch && bestMatch.similarity > 0.92) {
+                        console.log(`✅ High similarity match found (${(bestMatch.similarity * 100).toFixed(1)}%). Merging with cluster ${bestMatch.clusterId}.`);
+                        const clusterIndex = savedAnswerClusters.findIndex(c => c.id === bestMatch.clusterId);
+                        if (clusterIndex > -1) {
+                            const cluster = savedAnswerClusters[clusterIndex];
+                            const questionKey = question.trim().toLowerCase();
+                            
+                            // Check if this exact question already exists in this cluster
+                            const existingQuestion = cluster.questions.find(q => 
+                                q.question.trim().toLowerCase() === questionKey
+                            );
+                            
+                            if (!existingQuestion) {
+                                // Add the new question as a variant only if it doesn't already exist
+                                cluster.questions.push({
+                                    id: self.crypto.randomUUID(),
+                                    question, sourceUrl, embedding, timestamp: new Date().toISOString(),
+                                });
+                                console.log('💾 Semantic Autofill: Added new question variant to existing cluster:', cluster.id);
+                            } else {
+                                console.log('💾 Semantic Autofill: Question already exists in cluster, skipping duplicate');
+                            }
+                            
+                            // The latest answer for a topic becomes the new canonical answer.
+                            // This allows users to correct or update their answers over time.
+                            if (cluster.answer !== answer) {
+                                console.log(`📝 Updating cluster answer from "${cluster.answer}" to "${answer}".`);
+                                cluster.answer = answer;
+                            }
+                            
+                            await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
+                        }
+                    } 
+                    // Otherwise, this is a new topic. Create a new cluster.
+                    else {
+                        console.log(`ℹ️ No highly similar question cluster found. Creating a new cluster for this topic.`);
+                        const newCluster = {
                             id: self.crypto.randomUUID(),
-                            question, sourceUrl, embedding, timestamp: new Date().toISOString(),
-                        }],
-                    };
-                    console.log('💾 Semantic Autofill: Saving new answer cluster:', newCluster);
-                    await chrome.storage.local.set({ saved_answers: [...savedAnswerClusters, newCluster] });
+                            answer,
+                            questions: [{
+                                id: self.crypto.randomUUID(),
+                                question, sourceUrl, embedding, timestamp: new Date().toISOString(),
+                            }],
+                        };
+                        console.log('💾 Semantic Autofill: Saving new answer cluster:', newCluster);
+                        await chrome.storage.local.set({ saved_answers: [...savedAnswerClusters, newCluster] });
+                    }
                 }
+                pendingEmbeddings.delete(id);
             }
-            pendingEmbeddings.delete(id);
+        } else if (type === 'similarityResult') {
+            const results = payload;
+            if (results && results.length > 0 && currentFocusedElement) {
+                console.log(`✅ Semantic Autofill: Found ${results.length} potential matches.`);
+                showSuggestionPopup(results, currentFocusedElement);
+            } else {
+                hideSuggestionPopup();
+                console.log('❌ Semantic Autofill: No sufficiently similar answer found in the database.');
+            }
         }
-    } else if (type === 'similarityResult') {
-        const results = payload;
-        if (results && results.length > 0 && currentFocusedElement) {
-            console.log(`✅ Semantic Autofill: Found ${results.length} potential matches.`);
-            showSuggestionPopup(results, currentFocusedElement);
-        } else {
-            hideSuggestionPopup();
-            console.log('❌ Semantic Autofill: No sufficiently similar answer found in the database.');
-        }
-    }
-};
+    };
+}
 
 const getSavedAnswers = async () => {
     const data = await chrome.storage.local.get('saved_answers');
     return data.saved_answers || [];
 };
+
+async function saveNewQuestionAnswerPairWithoutEmbedding(question, answer) {
+    console.log(`💾 Saving new question/answer pair without embedding (CSP-blocked site).`);
+    const savedAnswerClusters = await getSavedAnswers();
+    
+    // Use text-based similarity to find existing clusters
+    const allQuestions = savedAnswerClusters.flatMap(cluster => 
+        (Array.isArray(cluster.questions) ? cluster.questions : []).map(q => ({
+            ...q, answer: cluster.answer, clusterId: cluster.id,
+        }))
+    );
+    
+    // Find similar existing questions using text matching
+    const bestMatches = await findSimilarAnswers(question, allQuestions);
+    const bestMatch = bestMatches?.[0];
+    
+    // If a very similar question exists, merge with that cluster
+    if (bestMatch && bestMatch.similarity > 0.75) {
+        console.log(`✅ High text similarity match found (${(bestMatch.similarity * 100).toFixed(1)}%). Merging with cluster ${bestMatch.clusterId}.`);
+        const clusterIndex = savedAnswerClusters.findIndex(c => c.id === bestMatch.clusterId);
+        if (clusterIndex > -1) {
+            const cluster = savedAnswerClusters[clusterIndex];
+            const questionKey = question.trim().toLowerCase();
+            
+            const existingQuestion = cluster.questions.find(q => 
+                q.question.trim().toLowerCase() === questionKey
+            );
+            
+            if (!existingQuestion) {
+                cluster.questions.push({
+                    id: self.crypto.randomUUID(),
+                    question, 
+                    sourceUrl: window.location.href, 
+                    timestamp: new Date().toISOString(),
+                });
+                console.log('💾 Semantic Autofill: Added new question variant to existing cluster:', cluster.id);
+            }
+            
+            // Update canonical answer if different
+            if (cluster.answer !== answer) {
+                console.log(`📝 Updating cluster answer from "${cluster.answer}" to "${answer}".`);
+                cluster.answer = answer;
+            }
+            
+            await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
+            return;
+        }
+    }
+    
+    // Otherwise, create a new cluster without embeddings
+    console.log(`ℹ️ No highly similar question cluster found. Creating a new cluster for this topic.`);
+    const newCluster = {
+        id: self.crypto.randomUUID(),
+        answer,
+        questions: [{
+            id: self.crypto.randomUUID(),
+            question, 
+            sourceUrl: window.location.href, 
+            timestamp: new Date().toISOString(),
+        }],
+    };
+    console.log('💾 Semantic Autofill: Saving new answer cluster:', newCluster);
+    await chrome.storage.local.set({ saved_answers: [...savedAnswerClusters, newCluster] });
+}
+
+async function addQuestionToCluster(question, suggestedClusterId) {
+    console.log('📝 Semantic Autofill: Linking new question to existing cluster (CSP-blocked site).');
+    const savedAnswerClusters = await getSavedAnswers();
+    const clusterIndex = savedAnswerClusters.findIndex(c => c.id === suggestedClusterId);
+    
+    if (clusterIndex > -1) {
+        const cluster = savedAnswerClusters[clusterIndex];
+        const questionKey = question.trim().toLowerCase();
+        
+        const existingQuestion = cluster.questions.find(q => 
+            q.question.trim().toLowerCase() === questionKey
+        );
+        
+        if (!existingQuestion) {
+            cluster.questions.push({
+                id: self.crypto.randomUUID(),
+                question, 
+                sourceUrl: window.location.href, 
+                timestamp: new Date().toISOString(),
+            });
+            console.log('💾 Semantic Autofill: Added new question variant to existing cluster:', cluster.id);
+            await chrome.storage.local.set({ saved_answers: savedAnswerClusters });
+        }
+    }
+}
 
 function getQuestionForInput(input) {
     // For radio buttons and checkboxes, we need to find the question text differently
@@ -519,21 +624,31 @@ async function captureAnswer(event) {
     
     // Scenario 1: User accepted suggestion without editing. Link new question to the cluster.
     if (wasAutofilled && suggestedClusterId) {
-        console.log('📝 Semantic Autofill: Linking new question to existing cluster.');
-        const id = self.crypto.randomUUID();
-        pendingEmbeddings.set(id, {
-            question,
-            answer: null, // Not a new answer
-            sourceUrl: window.location.href,
-            clusterIdToUpdate: suggestedClusterId,
-        });
-        worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
+        if (isAIEnabled) {
+            console.log('📝 Semantic Autofill: Linking new question to existing cluster.');
+            const id = self.crypto.randomUUID();
+            pendingEmbeddings.set(id, {
+                question,
+                answer: null, // Not a new answer
+                sourceUrl: window.location.href,
+                clusterIdToUpdate: suggestedClusterId,
+            });
+            worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
+        } else {
+            // CSP-blocked site: use text-based storage
+            addQuestionToCluster(question, suggestedClusterId);
+        }
     } 
     // Scenario 2: User typed a new answer OR edited a suggestion. Check if this question-answer combination already exists.
     else if (!wasAutofilled) {
-        console.log('📝 Semantic Autofill: Processing new answer - not autofilled. Kicking off embedding.');
-        // The main worker will handle the clustering logic once the embedding is ready.
-        saveNewQuestionAnswerPair(question, answer);
+        if (isAIEnabled) {
+            console.log('📝 Semantic Autofill: Processing new answer - not autofilled. Kicking off embedding.');
+            // The main worker will handle the clustering logic once the embedding is ready.
+            saveNewQuestionAnswerPair(question, answer);
+        } else {
+            // CSP-blocked site: use text-based storage
+            saveNewQuestionAnswerPairWithoutEmbedding(question, answer);
+        }
     }
 
     cleanupAttributes();
@@ -547,7 +662,9 @@ function saveNewQuestionAnswerPair(question, answer) {
         answer: answer,
         sourceUrl: window.location.href,
     });
-    worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
+    if (worker) {
+        worker.postMessage({ type: 'generateEmbedding', payload: { id, text: question } });
+    }
 }
 
 let currentFocusedElement = null;
@@ -679,9 +796,11 @@ document.addEventListener('input', (e) => {
     }
 });
 
-worker.onerror = (error) => {
-    console.error('💥 Semantic Autofill: Worker error:', error);
-};
+if (worker) {
+    worker.onerror = (error) => {
+        console.error('💥 Semantic Autofill: Worker error:', error);
+    };
+}
 
 // A reusable function to find similar answers using text-based matching
 // This is a fallback when the semantic AI worker is blocked by CSP
@@ -879,7 +998,7 @@ function suggestCheckboxAnswer(checkboxInput, match) {
 // *** Trigger for Proactive Page Scan ***
 let scanHasRun = false;
 const formObserver = new MutationObserver((mutations, observer) => {
-    const applicationForm = document.querySelector('.application-form, #application-form, #mainContent form, .section.page-centered.application-form');
+    const applicationForm = document.querySelector('.application-form, #application-form, #mainContent form, .section.page-centered.application-form, #_ashby-app-root_');
     console.log('🔍 Form observer checking for forms, found:', applicationForm ? 'yes' : 'no');
     if (applicationForm && !scanHasRun) {
         console.log('🔍 Application form detected, starting scan in 1 second');

@@ -27,7 +27,8 @@
         "https://jobs.lever.co/*",
         "https://app.dover.com/*",
         "https://*.workday.com/*",
-        "https://*.myworkdayjobs.com/*"
+        "https://*.myworkdayjobs.com/*",
+        "https://jobs.ashbyhq.com/*"
       ],
       "world": "ISOLATED",
       "run_at": "document_end"

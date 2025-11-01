@@ -71,6 +71,17 @@
     phoneNumber: "Phone",
     resume: "Resume",
   },
+  ashby: {
+    firstName: "First Name",
+    lastName: "Last Name",
+    email: "Email",
+    phone: "Phone",
+    location: "Location (City)",
+    "urls.linkedIn": "LinkedIn",
+    "urls.github": "Github",
+    "urls.portfolio": "Website",
+    resume: "Resume",
+  },
   workday: {
     "My Information": {
       country: "Location (Country)",

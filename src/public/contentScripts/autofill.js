@@ -25,7 +25,7 @@ window.addEventListener("load", (_) => {
   initTime = new Date().getTime();
   awaitForm();
 });
-const applicationFormQuery = "#application-form, #application_form, #applicationform";
+const applicationFormQuery = "#application-form, #application_form, #applicationform, #_ashby-app-root_";
 
 
 function inputQuery(jobParam, form) {
@@ -125,6 +125,7 @@ async function autofill(form) {
             lever: 'input[id="resume-upload-input"]',
             dover:
               'input[type="file"][accept=".pdf"], input[type="file"][accept="application/pdf"]',
+            ashby: 'input[name="resume"]',
           };
           let el = document.querySelector(resumeDiv[jobForm]);
           if (!el) {
