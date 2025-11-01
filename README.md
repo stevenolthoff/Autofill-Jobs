@@ -11,11 +11,7 @@ https://github.com/user-attachments/assets/13f0fb66-7436-40ff-8faf-c2540084337b
 </p>
 </div> -->
 
-Of course. This version frames the project as a major enhancement of a fork, highlights your specific contributions like answer clustering, and explains the suggestion algorithm in simple terms without using the "AI" buzzword.
-
----
-
-# Autofill Jobs 🚀
+# Autofill Jobs
 
 A browser extension to automatically fill in job applications, rebuilt for smarter and faster use.
 
