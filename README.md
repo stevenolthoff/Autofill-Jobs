@@ -1,4 +1,4 @@
-<div align="center">
+<!-- <div align="center">
 
 https://github.com/user-attachments/assets/13f0fb66-7436-40ff-8faf-c2540084337b
 
@@ -9,49 +9,55 @@ https://github.com/user-attachments/assets/13f0fb66-7436-40ff-8faf-c2540084337b
   A chrome extension that autofills job applications, built with 
   <a href="https://vuejs.org/">Vue</a>.
 </p>
-</div>
+</div> -->
 
-## Why I made this 
+Of course. This version frames the project as a major enhancement of a fork, highlights your specific contributions like answer clustering, and explains the suggestion algorithm in simple terms without using the "AI" buzzword.
 
-Job applications, especially on platforms like Workday, take way too long to fill out (up to 20 mins!)
+---
 
-I wanted to bring the ease-of-use of LinkedIn Easy Apply to other job platforms.
+# Autofill Jobs 🚀
 
+A browser extension to automatically fill in job applications, rebuilt for smarter and faster use.
 
-## How it works ✍️
+This project is a significant evolution of an earlier autofill extension, completely overhauled with intelligent answer management, a modern UI, and broader site compatibility.
 
- - Data is stored using chrome.storage.sync with the exception of larger files like résumés, which are stored with chrome.storage.local
- - Depending on platform (Greenhouse uses React components, Lever does not) the extension fills in the fields with the data
- - On Workday, ensure you have the tab open in full screen as some essential elements don't get rendered on smaller resolutions.
+## Key Enhancements in This Version
 
-## Supported Platforms ✅
- - Greenhouse 
- - Lever 
- - Dover 
- - Workday 
+*   **Intelligent Answer Clustering**: Instead of just saving one-to-one answers, this version is smarter. It clusters similar questions (like *"Why this role?"* and *"What makes you a good fit?"*) together. When you update your answer for one, it becomes the new go-to answer for that entire topic.
 
-## Getting Started 🚀
-You can either build the extension locally:
-```
-# Clone the repository
-git clone https://github.com/andrewmillercode/Autofill-Jobs.git
+*   **Context-Aware Suggestions**: The extension finds your most relevant saved answer by understanding the *meaning* of the new question on a form, not just by matching keywords. On sites with very strict security policies, it gracefully falls back to a simple word-overlap matching algorithm to ensure you still get helpful suggestions.
 
-#Go to source directory
-cd src
+*   **Automatic Resume Parsing**: With a Google Gemini API key, it reads your resume to auto-populate your skills and work experience, saving you manual data entry.
 
-# Install required packages
-npm i 
+*   **Modern & Usable UI**: The user interface has been completely redesigned with Vue 3 and Tailwind CSS for a clean, intuitive experience.
 
-# Build extension
-npm run build
+*   **Expanded Site Support**: Now works reliably on more job boards, including Ashby, Greenhouse, and Workday.
 
-# Then, navigate to chrome://extensions and load unpacked the dist folder.
-```
-Or download it from the Chrome Web Store [here](https://chromewebstore.google.com/detail/autofill-jobs/mfnfecldidgkknamdfibcdnmcjlaogpc)
+## Supported Platforms
 
-## License 📝
+*   Greenhouse
+*   Lever
+*   Workday
+*   Dover
+*   Ashby
 
-This project is using the MIT License. If you'd like to report an issue with the extension, please use the issues tab. If you enjoy using this extension, please feel free to leave a ⭐. 
+## Installation
 
-IMPORTANT: This project is not actively maintained at the moment.
+This extension is not on the Chrome Web Store. To install for development or personal use:
 
+1.  Clone or download this repository.
+2.  Run `npm install` and then `npm run build` to create the `dist` folder.
+3.  Open your browser, navigate to `chrome://extensions`, and enable "Developer mode".
+4.  Click "Load unpacked" and select the `dist` folder from this project.
+
+## Usage
+
+1.  Pin the extension to your toolbar.
+2.  Open the popup and fill in your details. Data is saved automatically.
+3.  Navigate to a job application on a supported site, and the extension will fill the form.
+
+## Development
+
+*   **Stack**: Vue 3, TypeScript, Tailwind CSS, Vite
+*   **Run Dev Build**: `npm run watch`
+    *   This command watches for changes and rebuilds the `dist/` folder. Reload the extension in `chrome://extensions` to see your changes.
