@@ -115,10 +115,14 @@ self.addEventListener('message', async (event) => {
 });
 `;
 
+// Use inline worker script as blob URL (CSP may block this, but it's the only option)
 const blob = new Blob([workerScript], { type: 'application/javascript' });
 const workerUrl = URL.createObjectURL(blob);
 const worker = new Worker(workerUrl, { type: 'module' });
 const pendingEmbeddings = new Map();
+
+// Note: CSP on Greenhouse blocks blob URLs, so the worker won't work there
+// The autofill will still work via basic field matching, just without semantic AI features
 
 const LOW_ENTROPY_ANSWERS = new Set([
     'yes', 'no', 'true', 'false', 'male', 'female', 
@@ -679,39 +683,37 @@ worker.onerror = (error) => {
     console.error('💥 Semantic Autofill: Worker error:', error);
 };
 
-// A reusable function to find similar answers using a temporary worker
+// A reusable function to find similar answers using text-based matching
+// This is a fallback when the semantic AI worker is blocked by CSP
 function findSimilarAnswers(questionText, allSavedAnswers) {
-    return new Promise((resolve) => {
-        if (!allSavedAnswers || allSavedAnswers.length === 0) {
-            resolve([]);
-            return;
+    if (!allSavedAnswers || allSavedAnswers.length === 0) {
+        return Promise.resolve([]);
+    }
+
+    // Simple text-based similarity using word overlap
+    const questionWords = new Set(questionText.toLowerCase().split(/\W+/).filter(w => w.length > 2));
+    
+    let matches = [];
+    
+    for (const item of allSavedAnswers) {
+        const savedQuestion = item.question || '';
+        const savedWords = new Set(savedQuestion.toLowerCase().split(/\W+/).filter(w => w.length > 2));
+        
+        // Calculate Jaccard similarity (intersection over union)
+        const intersection = new Set([...questionWords].filter(w => savedWords.has(w)));
+        const union = new Set([...questionWords, ...savedWords]);
+        const similarity = union.size > 0 ? intersection.size / union.size : 0;
+        
+        if (similarity > 0.3) { // Lower threshold for text matching
+            matches.push({ ...item, similarity });
         }
-
-        const tempWorker = new Worker(workerUrl, { type: 'module' });
-        const queryId = `query_${self.crypto.randomUUID()}`;
-
-        tempWorker.onmessage = (e) => {
-            const { type, payload } = e.data;
-            if (type === 'embeddingComplete' && payload.id === queryId) {
-                tempWorker.postMessage({ type: 'findSimilar', payload: { queryEmbedding: payload.embedding, savedAnswers: allSavedAnswers } });
-            } else if (type === 'similarityResult') {
-                resolve(payload); // payload is the array of matches
-                tempWorker.terminate();
-            } else if (type === 'error') {
-                console.error('💥 Semantic Autofill: Temp worker error:', payload);
-                resolve([]);
-                tempWorker.terminate();
-            }
-        };
-
-        tempWorker.onerror = (error) => {
-            console.error('💥 Semantic Autofill: Temp worker failed to start:', error);
-            resolve([]);
-            tempWorker.terminate();
-        };
-
-        tempWorker.postMessage({ type: 'generateEmbedding', payload: { id: queryId, text: questionText } });
-    });
+    }
+    
+    // Sort by similarity descending
+    matches.sort((a, b) => b.similarity - a.similarity);
+    
+    // Return top 3 matches
+    return Promise.resolve(matches.slice(0, 3));
 }
 
 // *** Proactive Autofill Scan for High-Confidence Matches ***
